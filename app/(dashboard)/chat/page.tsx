@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ChatContainer } from '@/components/chat/chat-container'
+import { ChatContainer } from '@/components/chat/chat-container-v2'
 import { useConversationStore } from '@/lib/stores/conversation'
 import { Database } from '@/types/database'
 
