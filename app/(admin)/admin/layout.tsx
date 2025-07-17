@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
 // Admin emails - in production, store this in environment variables
-const ADMIN_EMAILS = ['admin@efflux.ai']
+const ADMIN_EMAILS = ['admin@efflux.ai', 'jackwwg@gmail.com']
 
 export default async function AdminLayout({
   children,
