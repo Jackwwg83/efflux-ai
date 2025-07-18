@@ -110,10 +110,10 @@ export default function ApiKeysPage() {
   }
 
   const handleAddKey = async () => {
-    if (!newKey.provider || !newKey.api_key || !newKey.name) {
+    if (!newKey.provider || !newKey.api_key) {
       toast({
         title: 'Error',
-        description: 'Please fill in all fields',
+        description: 'Please select provider and enter API key',
         variant: 'destructive',
       })
       return
@@ -128,7 +128,7 @@ export default function ApiKeysPage() {
         .insert({
           provider: newKey.provider,
           api_key: newKey.api_key,
-          name: newKey.name,
+          name: newKey.name || `${newKey.provider} Key`,
           created_by: user?.id,
         })
 
