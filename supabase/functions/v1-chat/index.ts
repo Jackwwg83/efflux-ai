@@ -282,21 +282,31 @@ async function forwardToProvider(params: any) {
       
     case 'google':
       // Transform for Gemini API
-      const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + 
-        model + ':' + (stream ? 'streamGenerateContent' : 'generateContent') + 
-        '?key=' + apiKey
-        
+      // Convert messages to contents array format
+      const geminiContents = messages
+        .filter(m => m.role !== 'system')
+        .map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }))
+      
+      // Add system message to the first user message if exists
+      const systemMessage = messages.find(m => m.role === 'system')
+      if (systemMessage && geminiContents.length > 0 && geminiContents[0].role === 'user') {
+        geminiContents[0].parts[0].text = systemMessage.content + '\n\n' + geminiContents[0].parts[0].text
+      }
+      
+      // Use v1 API endpoint
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`
+      
       return fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: messages.map(m => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-          })),
+          contents: geminiContents,
           generationConfig: {
-            temperature,
-            maxOutputTokens: max_tokens,
+            temperature: temperature || 1.0,
+            maxOutputTokens: max_tokens || 8192,
             candidateCount: 1
           }
         })

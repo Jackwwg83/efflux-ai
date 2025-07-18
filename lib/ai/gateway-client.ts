@@ -28,7 +28,7 @@ export class AIGatewayClient {
     
     // Call our API Gateway instead of direct provider APIs
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/v1-chat`,
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/chat`,
       {
         method: 'POST',
         headers: {
