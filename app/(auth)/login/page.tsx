@@ -29,6 +29,9 @@ function LoginForm() {
     setError(null)
 
     try {
+      // Store the redirect URL in a cookie before login
+      document.cookie = `auth-redirect=${encodeURIComponent(redirectTo)}; path=/; max-age=600`
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -50,10 +53,13 @@ function LoginForm() {
     setError(null)
 
     try {
+      // Store the redirect URL in a cookie before OAuth redirect
+      document.cookie = `auth-redirect=${encodeURIComponent(redirectTo)}; path=/; max-age=600`
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
 
