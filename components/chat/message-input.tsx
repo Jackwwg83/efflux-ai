@@ -9,18 +9,20 @@ interface MessageInputProps {
   onSendMessage: (message: string) => void
   isLoading: boolean
   onStopStreaming?: () => void
+  disabled?: boolean
 }
 
 export function MessageInput({
   onSendMessage,
   isLoading,
   onStopStreaming,
+  disabled = false,
 }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSubmit = () => {
-    if (message.trim() && !isLoading) {
+    if (message.trim() && !isLoading && !disabled) {
       onSendMessage(message.trim())
       setMessage('')
       textareaRef.current?.focus()
@@ -46,7 +48,7 @@ export function MessageInput({
             placeholder="Type your message..."
             className="resize-none"
             rows={1}
-            disabled={isLoading}
+            disabled={isLoading || disabled}
           />
           
           {isLoading && onStopStreaming ? (
@@ -61,7 +63,7 @@ export function MessageInput({
             <Button
               onClick={handleSubmit}
               size="icon"
-              disabled={!message.trim() || isLoading}
+              disabled={!message.trim() || isLoading || disabled}
             >
               <Send className="h-4 w-4" />
             </Button>

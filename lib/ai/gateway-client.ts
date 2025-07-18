@@ -168,7 +168,7 @@ export class AIGatewayClient {
       .order('display_name', { ascending: true })
     
     // Filter based on tier
-    const tierOrder = { free: 0, pro: 1, max: 2 }
+    const tierOrder: Record<string, number> = { free: 0, pro: 1, max: 2 }
     return models?.filter(model => {
       const requiredTier = model.tier_required || 'free'
       return tierOrder[tier] >= tierOrder[requiredTier]
