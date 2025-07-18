@@ -428,11 +428,11 @@ export default function ApiKeysPage() {
                           )}
                           
                           <Button
-                            variant={key.is_active ? 'default' : 'outline'}
+                            variant={key.is_active ? 'outline' : 'default'}
                             size="sm"
                             onClick={() => handleToggleActive(key.id, key.is_active)}
                           >
-                            {key.is_active ? 'Active' : 'Inactive'}
+                            {key.is_active ? 'Deactivate' : 'Activate'}
                           </Button>
                           
                           <AlertDialog>
