@@ -243,8 +243,8 @@ export default function ApiKeysPage() {
   const getKeyStatus = (key: ApiKeyPool) => {
     if (!key.is_active) return { label: 'Inactive', variant: 'secondary' as const }
     if (key.consecutive_errors >= 5) return { label: 'Error', variant: 'destructive' as const }
-    if (key.rate_limit_remaining < 100) return { label: 'Rate Limited', variant: 'warning' as const }
-    return { label: 'Active', variant: 'success' as const }
+    if (key.rate_limit_remaining < 100) return { label: 'Rate Limited', variant: 'outline' as const }
+    return { label: 'Active', variant: 'default' as const }
   }
 
   const formatLastUsed = (date: string | null) => {
