@@ -126,12 +126,16 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         }))
       apiMessages.push({ role: 'user', content })
 
+      // Track accumulated content
+      let accumulatedContent = ''
+
       // Call AI Gateway
       await aiClient.current.streamChat({
         model: currentConversation.model || 'gpt-3.5-turbo',
         messages: apiMessages,
         onUpdate: (chunk) => {
-          updateMessage(tempAssistantId, (prev) => prev + chunk)
+          accumulatedContent += chunk
+          updateMessage(tempAssistantId, accumulatedContent)
         },
         onFinish: async () => {
           // Save messages to database
@@ -146,7 +150,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
             })
 
             // Get final assistant content
-            const finalContent = messages.find(m => m.id === tempAssistantId)?.content || ''
+            const finalContent = accumulatedContent
             
             // Save assistant message
             await supabase.from('messages').insert({
