@@ -105,8 +105,9 @@ export default function UsersPage() {
   const loadUsers = async () => {
     setLoading(true)
     try {
+      // Build query for users with joins
       let query = supabase
-        .from('users')
+        .from('users_view')
         .select(`
           *,
           user_tiers!left(tier, updated_at),
@@ -120,17 +121,23 @@ export default function UsersPage() {
         query = query.ilike('email', `%${searchQuery}%`)
       }
 
-      // Apply tier filter
-      if (filterTier !== 'all') {
-        query = query.eq('user_tiers.tier', filterTier)
-      }
-
       const { data, error, count } = await query
 
       if (error) throw error
 
+      // Process users and filter by tier if needed
+      let processedUsers = data || []
+      
+      // Apply tier filter on the processed data if needed
+      if (filterTier !== 'all') {
+        processedUsers = processedUsers.filter(user => {
+          const userTier = user.user_tiers ? user.user_tiers.tier : 'free'
+          return userTier === filterTier
+        })
+      }
+
       // Calculate total usage for each user
-      const usersWithStats = await Promise.all((data || []).map(async (user) => {
+      const usersWithStats = await Promise.all(processedUsers.map(async (user) => {
         const { data: usageLogs } = await supabase
           .from('usage_logs')
           .select('total_tokens, estimated_cost, created_at')

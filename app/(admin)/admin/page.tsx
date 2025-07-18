@@ -101,7 +101,7 @@ export default function AdminDashboard() {
         providerStatsData
       ] = await Promise.all([
         // Total and active users
-        supabase.from('users').select('id, created_at'),
+        supabase.from('users_view').select('id, created_at'),
         
         // API Keys stats
         supabase.from('api_key_pool').select('*'),
@@ -111,9 +111,12 @@ export default function AdminDashboard() {
           .select('total_tokens, estimated_cost, status')
           .gte('created_at', startDate.toISOString()),
         
-        // Recent activity
+        // Recent activity - join with users_view
         supabase.from('usage_logs')
-          .select('*, users(email)')
+          .select(`
+            *,
+            users:users_view!user_id(email)
+          `)
           .order('created_at', { ascending: false })
           .limit(10),
         
