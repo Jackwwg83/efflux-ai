@@ -5,9 +5,13 @@ import { cookies } from 'next/headers'
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  const cookieStore = cookies()
+  
+  // Debug: Log all query params
+  console.log('Auth callback URL:', request.url)
+  console.log('All query params:', Object.fromEntries(requestUrl.searchParams))
 
   if (code) {
-    const cookieStore = cookies()
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -34,8 +38,20 @@ export async function GET(request: Request) {
     }
   }
 
-  // Get the redirect URL from query params
-  const redirectTo = requestUrl.searchParams.get('redirectTo') || '/chat'
+  // Get the redirect URL from cookie or query params
+  const redirectCookie = cookieStore.get('auth-redirect')
+  let redirectTo = '/chat'
+  
+  if (redirectCookie) {
+    redirectTo = decodeURIComponent(redirectCookie.value)
+    // Clear the cookie after use
+    cookieStore.delete('auth-redirect')
+  } else if (requestUrl.searchParams.get('redirectTo')) {
+    // Fallback to query param for email login
+    redirectTo = requestUrl.searchParams.get('redirectTo') || '/chat'
+  }
+  
+  console.log('Redirecting to:', redirectTo)
   
   // URL to redirect to after sign in process completes
   return NextResponse.redirect(new URL(redirectTo, requestUrl.origin))
