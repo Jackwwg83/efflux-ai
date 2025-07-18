@@ -95,14 +95,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       }
 
       // Check if user is admin
-      const { data: adminData } = await supabase
+      const { data: adminData, error: adminError } = await supabase
         .from('admins')
         .select('id')
         .eq('user_id', user.id)
         .single()
 
-      if (!adminData) {
-        router.push('/')
+      console.log('Admin check:', { userId: user.id, email: user.email, adminData, adminError })
+
+      if (adminError || !adminData) {
+        console.error('Not an admin, redirecting...', adminError)
+        router.push('/chat')
         return
       }
 
