@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -13,11 +13,15 @@ import { Loader2, Mail } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Get the redirect URL from query params
+  const redirectTo = searchParams.get('redirectTo') || '/chat'
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,7 +36,7 @@ export default function LoginPage() {
 
       if (error) throw error
 
-      router.push('/chat')
+      router.push(redirectTo)
       router.refresh()
     } catch (error: any) {
       setError(error.message)
@@ -49,7 +53,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
         },
       })
 

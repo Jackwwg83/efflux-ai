@@ -34,6 +34,9 @@ export async function GET(request: Request) {
     }
   }
 
+  // Get the redirect URL from query params
+  const redirectTo = requestUrl.searchParams.get('redirectTo') || '/chat'
+  
   // URL to redirect to after sign in process completes
-  return NextResponse.redirect(new URL('/chat', requestUrl.origin))
+  return NextResponse.redirect(new URL(redirectTo, requestUrl.origin))
 }
