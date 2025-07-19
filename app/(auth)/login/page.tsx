@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Mail } from 'lucide-react'
+import { Loader2, Mail, CheckCircle } from 'lucide-react'
 
 function LoginForm() {
   const router = useRouter()
@@ -20,8 +20,9 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  // Get the redirect URL from query params
+  // Get the redirect URL and message from query params
   const redirectTo = searchParams.get('redirectTo') || '/chat'
+  const message = searchParams.get('message')
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -80,6 +81,13 @@ function LoginForm() {
       </CardHeader>
       <form onSubmit={handleEmailLogin}>
         <CardContent className="space-y-4">
+          {message && (
+            <Alert className="bg-green-50 text-green-900 border-green-200">
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          )}
+          
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

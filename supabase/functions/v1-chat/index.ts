@@ -291,13 +291,14 @@ async function forwardToProvider(params: any) {
         }))
       
       // Add system message to the first user message if exists
-      const systemMessage = messages.find(m => m.role === 'system')
-      if (systemMessage && geminiContents.length > 0 && geminiContents[0].role === 'user') {
-        geminiContents[0].parts[0].text = systemMessage.content + '\n\n' + geminiContents[0].parts[0].text
+      const geminiSystemMessage = messages.find(m => m.role === 'system')
+      if (geminiSystemMessage && geminiContents.length > 0 && geminiContents[0].role === 'user') {
+        geminiContents[0].parts[0].text = geminiSystemMessage.content + '\n\n' + geminiContents[0].parts[0].text
       }
       
-      // Use v1 API endpoint
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`
+      // Use v1 API endpoint with streaming support
+      const endpoint = stream ? 'streamGenerateContent' : 'generateContent'
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:${endpoint}?key=${apiKey}${stream ? '&alt=sse' : ''}`
       
       return fetch(geminiUrl, {
         method: 'POST',
@@ -344,7 +345,19 @@ async function handleStreamResponse(params: any) {
       
       // Estimate tokens (provider-specific parsing would be more accurate)
       const estimatedTokens = Math.ceil(responseContent.length / 4)
-      totalTokens = estimatedTokens
+      const promptTokens = estimateTokens(params.messages || [])
+      totalTokens = promptTokens + estimatedTokens
+      
+      // Send token usage info to client
+      const usageData = {
+        promptTokens,
+        completionTokens: estimatedTokens,
+        totalTokens,
+        model: params.model,
+        provider
+      }
+      
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'usage', usage: usageData })}\n\n`))
       
       // Record usage
       await recordUsage({
@@ -353,13 +366,13 @@ async function handleStreamResponse(params: any) {
         model,
         provider,
         apiKeyId,
-        promptTokens: estimateTokens(params.messages || []),
+        promptTokens,
         completionTokens: estimatedTokens,
-        totalTokens: totalTokens + estimateTokens(params.messages || []),
+        totalTokens,
         cost: calculateCost({
-          promptTokens: estimateTokens(params.messages || []),
+          promptTokens,
           completionTokens: estimatedTokens,
-          totalTokens: totalTokens + estimateTokens(params.messages || [])
+          totalTokens
         }, modelConfig),
         latency,
         status: 'success'
