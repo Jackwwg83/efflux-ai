@@ -43,7 +43,7 @@ export default function RegisterPage() {
       if (error) throw error
 
       // Redirect to login with success message
-      router.push('/login?message=Check your email to confirm your account')
+      router.push('/login?message=Registration successful! Please check your email to confirm your account.')
     } catch (error: any) {
       setError(error.message)
     } finally {
