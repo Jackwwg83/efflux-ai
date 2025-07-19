@@ -18,7 +18,8 @@ import {
   DollarSign,
   Zap,
   Shield,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react'
 import {
   Select,
@@ -89,6 +90,7 @@ export default function ModelsPage() {
   const [isAddingModel, setIsAddingModel] = useState(false)
   const [saving, setSaving] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<string>('all')
+  const [syncing, setSyncing] = useState(false)
   
   const supabase = createClient()
   const { toast } = useToast()
@@ -230,6 +232,46 @@ export default function ModelsPage() {
     }
   }
 
+  const handleSyncModels = async () => {
+    setSyncing(true)
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/sync-models`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ manual: true })
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Sync failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      toast({
+        title: 'Sync Complete',
+        description: 'Model configurations have been updated from provider APIs'
+      })
+
+      // Reload models to show updates
+      loadModels()
+    } catch (error) {
+      console.error('Error syncing models:', error)
+      toast({
+        title: 'Sync Failed',
+        description: 'Failed to sync model configurations',
+        variant: 'destructive'
+      })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const filteredModels = selectedProvider === 'all' 
     ? models 
     : models.filter(m => m.provider === selectedProvider)
@@ -277,30 +319,40 @@ export default function ModelsPage() {
               <CardTitle>Model Configurations</CardTitle>
               <CardDescription>Configure AI models, pricing, and access tiers</CardDescription>
             </div>
-            <Button onClick={() => {
-              setEditingModel({
-                id: '',
-                provider: 'openai',
-                model: '',
-                display_name: '',
-                provider_model_id: null,
-                input_price: 0,
-                output_price: 0,
-                max_tokens: 4096,
-                context_window: 128000,
-                tier_required: 'free',
-                is_active: true,
-                supports_streaming: true,
-                supports_functions: false,
-                default_temperature: 0.7,
-                created_at: '',
-                updated_at: ''
-              })
-              setIsAddingModel(true)
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Model
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleSyncModels}
+                disabled={syncing}
+              >
+                <RefreshCw className={cn("mr-2 h-4 w-4", syncing && "animate-spin")} />
+                {syncing ? 'Syncing...' : 'Sync Models'}
+              </Button>
+              <Button onClick={() => {
+                setEditingModel({
+                  id: '',
+                  provider: 'openai',
+                  model: '',
+                  display_name: '',
+                  provider_model_id: null,
+                  input_price: 0,
+                  output_price: 0,
+                  max_tokens: 4096,
+                  context_window: 128000,
+                  tier_required: 'free',
+                  is_active: true,
+                  supports_streaming: true,
+                  supports_functions: false,
+                  default_temperature: 0.7,
+                  created_at: '',
+                  updated_at: ''
+                })
+                setIsAddingModel(true)
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Model
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
