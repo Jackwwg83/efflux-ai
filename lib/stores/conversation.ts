@@ -14,6 +14,7 @@ interface ConversationStore {
   setMessages: (messages: Message[]) => void
   addMessage: (message: Message) => void
   updateMessage: (id: string, content: string) => void
+  updateMessageTokens: (id: string, tokens: { prompt_tokens: number; completion_tokens: number; total_tokens: number }) => void
 }
 
 export const useConversationStore = create<ConversationStore>((set) => ({
@@ -41,6 +42,13 @@ export const useConversationStore = create<ConversationStore>((set) => ({
     set((state) => ({
       messages: state.messages.map((msg) =>
         msg.id === id ? { ...msg, content } : msg
+      ),
+    })),
+  
+  updateMessageTokens: (id, tokens) => 
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg.id === id ? { ...msg, ...tokens } : msg
       ),
     })),
 }))

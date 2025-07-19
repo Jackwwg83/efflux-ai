@@ -11,7 +11,7 @@ export interface ChatParams {
   temperature?: number
   maxTokens?: number
   onUpdate?: (content: string) => void
-  onFinish?: () => void
+  onFinish?: (usage?: { promptTokens: number; completionTokens: number; totalTokens: number }) => void
   onError?: (error: Error) => void
 }
 
@@ -64,12 +64,13 @@ export class AIGatewayClient {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
       
       while (true) {
         const { done, value } = await reader.read()
         
         if (done) {
-          params.onFinish?.()
+          params.onFinish?.(usage)
           break
         }
         
@@ -82,12 +83,22 @@ export class AIGatewayClient {
             const data = line.slice(6)
             
             if (data === '[DONE]') {
-              params.onFinish?.()
+              params.onFinish?.(usage)
               return
             }
             
             try {
               const parsed = JSON.parse(data)
+              
+              // Handle usage message
+              if (parsed.type === 'usage' && parsed.usage) {
+                usage = {
+                  promptTokens: parsed.usage.promptTokens,
+                  completionTokens: parsed.usage.completionTokens,
+                  totalTokens: parsed.usage.totalTokens
+                }
+                continue
+              }
               
               // Handle different provider formats
               let content = ''

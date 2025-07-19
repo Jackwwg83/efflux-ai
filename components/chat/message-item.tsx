@@ -38,6 +38,7 @@ export function MessageItem({ message, isStreaming }: MessageItemProps) {
         {message.total_tokens && (
           <div className="text-xs opacity-70 mt-2">
             {message.total_tokens} tokens
+            {message.model && <span> • {message.model}</span>}
           </div>
         )}
       </div>

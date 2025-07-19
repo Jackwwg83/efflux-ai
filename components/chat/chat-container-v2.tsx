@@ -34,6 +34,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
     setMessages,
     addMessage,
     updateMessage,
+    updateMessageTokens,
   } = useConversationStore()
 
   useEffect(() => {
@@ -137,7 +138,16 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
           accumulatedContent += chunk
           updateMessage(tempAssistantId, accumulatedContent)
         },
-        onFinish: async () => {
+        onFinish: async (usage) => {
+          // Update temporary message with token usage
+          if (usage) {
+            updateMessageTokens(tempAssistantId, {
+              prompt_tokens: usage.promptTokens,
+              completion_tokens: usage.completionTokens,
+              total_tokens: usage.totalTokens,
+            })
+          }
+          
           // Save messages to database
           try {
             // Save user message
@@ -152,13 +162,16 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
             // Get final assistant content
             const finalContent = accumulatedContent
             
-            // Save assistant message
+            // Save assistant message with token usage
             await supabase.from('messages').insert({
               conversation_id: currentConversation.id,
               role: 'assistant',
               content: finalContent,
               model: currentConversation.model,
               provider: currentConversation.provider,
+              prompt_tokens: usage?.promptTokens || null,
+              completion_tokens: usage?.completionTokens || null,
+              total_tokens: usage?.totalTokens || null,
             })
 
             // Update conversation
