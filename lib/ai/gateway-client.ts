@@ -146,7 +146,44 @@ export class AIGatewayClient {
     
     if (error) {
       console.error('Error fetching quota:', error)
-      return null
+      
+      // Fallback: try direct table query
+      const { data: quotaData, error: quotaError } = await this.supabase
+        .from('user_quotas')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+      
+      if (quotaError) {
+        console.error('Fallback quota query also failed:', quotaError)
+        // Return default values if all fails
+        return {
+          tokens_used_today: 0,
+          tokens_used_month: 0,
+          requests_today: 0,
+          requests_month: 0,
+          cost_today: 0,
+          cost_month: 0,
+          tier: 'free',
+          daily_limit: 5000
+        }
+      }
+      
+      // Get tier information
+      const { data: tierData } = await this.supabase
+        .from('user_tiers')
+        .select('tier')
+        .eq('user_id', user.id)
+        .single()
+      
+      const tier = tierData?.tier || 'free'
+      const daily_limit = tier === 'pro' ? 50000 : tier === 'max' ? 500000 : 5000
+      
+      return {
+        ...quotaData,
+        tier,
+        daily_limit
+      }
     }
     
     return data
