@@ -452,10 +452,11 @@ export default function ModelsPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {healthConfig && (
-                            <healthConfig.icon 
-                              className={cn("h-4 w-4", healthConfig.color)}
-                              title={model.health_message || healthConfig.label}
-                            />
+                            <div title={model.health_message || healthConfig.label}>
+                              <healthConfig.icon 
+                                className={cn("h-4 w-4", healthConfig.color)}
+                              />
+                            </div>
                           )}
                           {model.consecutive_failures !== undefined && model.consecutive_failures > 0 && (
                             <span className="text-xs text-muted-foreground">
