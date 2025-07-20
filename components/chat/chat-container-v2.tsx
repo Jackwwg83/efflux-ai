@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { MessageList } from './message-list'
 import { MessageInput } from './message-input'
 import { ModelSelector } from './model-selector'
+import { ContextIndicator } from './context-indicator'
 import { createClient } from '@/lib/supabase/client'
 import { useConversationStore } from '@/lib/stores/conversation'
 import { useToast } from '@/hooks/use-toast'
@@ -25,6 +26,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
   const [quotaStatus, setQuotaStatus] = useState<any>(null)
+  const [currentInput, setCurrentInput] = useState('')
   const abortControllerRef = useRef<AbortController | null>(null)
   const aiClient = useRef(new AIGatewayClient())
   
@@ -285,11 +287,19 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         streamingMessageId={streamingMessageId}
       />
       
+      {/* 上下文使用指示器 */}
+      <ContextIndicator
+        messages={messages}
+        currentInput={currentInput}
+        model={currentConversation?.model || 'gpt-3.5-turbo'}
+      />
+      
       <MessageInput
         onSendMessage={sendMessage}
         isLoading={isLoading}
         onStopStreaming={stopStreaming}
         disabled={quotaPercentage >= 100}
+        onInputChange={setCurrentInput}
       />
     </div>
   )

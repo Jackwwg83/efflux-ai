@@ -139,10 +139,9 @@ export class AIGatewayClient {
       throw new Error('Not authenticated')
     }
     
+    // Use the new function that handles automatic resets
     const { data, error } = await this.supabase
-      .from('user_quotas')
-      .select('*')
-      .eq('user_id', user.id)
+      .rpc('get_user_quota_status', { p_user_id: user.id })
       .single()
     
     if (error) {
