@@ -373,6 +373,9 @@ async function handleStreamResponse(params: any) {
       
       controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'usage', usage: usageData })}\n\n`))
       
+      // Send [DONE] signal to properly end the stream
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      
       // Record usage
       await recordUsage({
         supabase,

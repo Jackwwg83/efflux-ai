@@ -10,6 +10,7 @@ interface MessageInputProps {
   isLoading: boolean
   onStopStreaming?: () => void
   disabled?: boolean
+  onInputChange?: (value: string) => void
 }
 
 export function MessageInput({
@@ -17,6 +18,7 @@ export function MessageInput({
   isLoading,
   onStopStreaming,
   disabled = false,
+  onInputChange,
 }: MessageInputProps) {
   const [message, setMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -43,7 +45,10 @@ export function MessageInput({
           <Textarea
             ref={textareaRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              setMessage(e.target.value)
+              onInputChange?.(e.target.value)
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Type your message..."
             className="resize-none"
