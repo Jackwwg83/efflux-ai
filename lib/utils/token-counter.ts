@@ -226,6 +226,3 @@ export class TokenCounter {
     return `${Math.round(tokens / 1000)}k`
   }
 }
-
-// 导出类型
-export type { Message, TokenUsage }
