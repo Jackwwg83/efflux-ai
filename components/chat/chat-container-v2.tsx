@@ -191,6 +191,11 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
             loadQuotaStatus()
           } catch (error) {
             console.error('Error saving messages:', error)
+          } finally {
+            // Reset loading state after streaming completes
+            setIsLoading(false)
+            setStreamingMessageId(null)
+            abortControllerRef.current = null
           }
         },
         onError: (error) => {
@@ -200,6 +205,10 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
             description: error.message,
             variant: 'destructive',
           })
+          // Reset loading state on error
+          setIsLoading(false)
+          setStreamingMessageId(null)
+          abortControllerRef.current = null
         }
       })
 
@@ -213,7 +222,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
           variant: 'destructive',
         })
       }
-    } finally {
+      // Reset loading state on error
       setIsLoading(false)
       setStreamingMessageId(null)
       abortControllerRef.current = null
