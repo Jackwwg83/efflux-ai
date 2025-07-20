@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { Progress } from '@/components/ui/progress'
+// Progress component removed - using custom implementation
 import { AlertCircle, Info, ChevronDown, ChevronUp } from 'lucide-react'
 import { TokenCounter } from '@/lib/utils/token-counter'
 import {
@@ -114,11 +114,12 @@ export function ContextIndicator({
         <div className="flex items-center gap-2 px-4 py-2">
           {/* 进度条和基础信息 */}
           <div className="flex-1 flex items-center gap-3">
-            <Progress 
-              value={usage.percentage} 
-              className="h-2 flex-1"
-              indicatorClassName={getProgressColor()}
-            />
+            <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+              <div 
+                className={cn("h-full w-full flex-1 transition-all", getProgressColor())}
+                style={{ transform: `translateX(-${100 - (usage.percentage || 0)}%)` }}
+              />
+            </div>
             
             <TooltipProvider>
               <Tooltip>
