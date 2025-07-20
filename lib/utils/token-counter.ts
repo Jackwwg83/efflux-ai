@@ -92,9 +92,11 @@ export class TokenCounter {
       'gemini-2.5-flash': 1048576,
       'gemini-2.5-pro': 1048576,
       
-      // Bedrock (同 Claude)
-      'claude-3-haiku': 200000,
-      'claude-3-sonnet': 200000,
+      // Bedrock (AWS 版本的 Claude 模型)
+      'anthropic.claude-3-haiku-20240307-v1:0': 200000,
+      'anthropic.claude-3-sonnet-20240229-v1:0': 200000,
+      'anthropic.claude-3-opus-20240229-v1:0': 200000,
+      'anthropic.claude-3-5-sonnet-20240620-v1:0': 200000,
     }
     
     // 返回对应限制，如果未找到则返回默认值
