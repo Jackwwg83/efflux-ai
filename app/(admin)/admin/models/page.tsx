@@ -20,7 +20,11 @@ import {
   Zap,
   Shield,
   X,
-  RefreshCw
+  RefreshCw,
+  AlertCircle,
+  AlertTriangle,
+  Wrench,
+  CheckCircle
 } from 'lucide-react'
 import {
   Select,
@@ -69,6 +73,10 @@ interface ModelConfig {
   default_temperature: number
   created_at: string
   updated_at: string
+  health_status?: 'healthy' | 'degraded' | 'unavailable' | 'maintenance'
+  health_message?: string
+  health_checked_at?: string
+  consecutive_failures?: number
 }
 
 const PROVIDERS = [
@@ -82,6 +90,13 @@ const TIER_OPTIONS = [
   { value: 'free', label: 'Free', color: 'bg-gray-500' },
   { value: 'pro', label: 'Pro', color: 'bg-blue-500' },
   { value: 'max', label: 'Max', color: 'bg-purple-500' }
+]
+
+const HEALTH_STATUS_OPTIONS = [
+  { value: 'healthy', label: 'Healthy', icon: CheckCircle, color: 'text-green-500' },
+  { value: 'degraded', label: 'Degraded', icon: AlertTriangle, color: 'text-yellow-500' },
+  { value: 'unavailable', label: 'Unavailable', icon: AlertCircle, color: 'text-red-500' },
+  { value: 'maintenance', label: 'Maintenance', icon: Wrench, color: 'text-blue-500' }
 ]
 
 export default function ModelsPage() {
@@ -141,7 +156,9 @@ export default function ModelsPage() {
         is_active: editingModel.is_active,
         supports_streaming: editingModel.supports_streaming,
         supports_functions: editingModel.supports_functions,
-        default_temperature: editingModel.default_temperature
+        default_temperature: editingModel.default_temperature,
+        health_status: editingModel.health_status || 'healthy',
+        health_message: editingModel.health_message || null
       }
 
       if (editingModel.id) {
@@ -381,6 +398,7 @@ export default function ModelsPage() {
                   <TableHead>Pricing</TableHead>
                   <TableHead>Limits</TableHead>
                   <TableHead>Tier</TableHead>
+                  <TableHead>Health</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -388,6 +406,7 @@ export default function ModelsPage() {
               <TableBody>
                 {filteredModels.map((model) => {
                   const tierConfig = TIER_OPTIONS.find(t => t.value === model.tier_required)
+                  const healthConfig = HEALTH_STATUS_OPTIONS.find(h => h.value === (model.health_status || 'healthy'))
                   
                   return (
                     <TableRow key={model.id}>
@@ -429,6 +448,21 @@ export default function ModelsPage() {
                         <Badge className={tierConfig?.color}>
                           {tierConfig?.label}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {healthConfig && (
+                            <healthConfig.icon 
+                              className={cn("h-4 w-4", healthConfig.color)}
+                              title={model.health_message || healthConfig.label}
+                            />
+                          )}
+                          {model.consecutive_failures !== undefined && model.consecutive_failures > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              ({model.consecutive_failures} failures)
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Switch
@@ -637,6 +671,51 @@ export default function ModelsPage() {
                     checked={editingModel.is_active}
                     onCheckedChange={(checked) => setEditingModel({...editingModel, is_active: checked})}
                   />
+                </div>
+
+                {/* Health Status Management */}
+                <div className="border-t pt-4 space-y-4">
+                  <h4 className="font-medium">Health Status</h4>
+                  
+                  <div className="space-y-2">
+                    <Label>Health Status</Label>
+                    <Select
+                      value={editingModel.health_status || 'healthy'}
+                      onValueChange={(value: 'healthy' | 'degraded' | 'unavailable' | 'maintenance') => 
+                        setEditingModel({...editingModel, health_status: value})
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HEALTH_STATUS_OPTIONS.map(status => (
+                          <SelectItem key={status.value} value={status.value}>
+                            <div className="flex items-center gap-2">
+                              <status.icon className={cn("h-4 w-4", status.color)} />
+                              {status.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Health Message (Optional)</Label>
+                    <Input
+                      value={editingModel.health_message || ''}
+                      onChange={(e) => setEditingModel({...editingModel, health_message: e.target.value})}
+                      placeholder="e.g., API rate limit reached, Temporary outage"
+                    />
+                  </div>
+
+                  {editingModel.consecutive_failures !== undefined && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <AlertCircle className="h-4 w-4" />
+                      Consecutive failures: {editingModel.consecutive_failures}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { Check, ChevronsUpDown, AlertCircle, AlertTriangle, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,6 +27,8 @@ interface Model {
   display_name: string
   tier_required: 'free' | 'pro' | 'max'
   is_active: boolean
+  health_status?: 'healthy' | 'degraded' | 'unavailable' | 'maintenance'
+  health_message?: string
 }
 
 export function ModelSelector() {
@@ -98,6 +100,26 @@ export function ModelSelector() {
         variant: 'destructive',
       })
       return
+    }
+
+    // Warn about unhealthy models
+    if (model.health_status === 'unavailable') {
+      toast({
+        title: 'Model Unavailable',
+        description: model.health_message || 'This model is temporarily unavailable',
+        variant: 'destructive',
+      })
+      return
+    } else if (model.health_status === 'degraded') {
+      toast({
+        title: 'Model May Be Slow',
+        description: model.health_message || 'This model is experiencing issues and may be slow or unreliable',
+      })
+    } else if (model.health_status === 'maintenance') {
+      toast({
+        title: 'Model Under Maintenance',
+        description: model.health_message || 'This model is currently under maintenance',
+      })
     }
 
     try {
@@ -175,13 +197,33 @@ export function ModelSelector() {
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span>{model.display_name}</span>
+                      <div className="flex items-center gap-2">
+                        <span>{model.display_name}</span>
+                        {model.health_status && model.health_status !== 'healthy' && (
+                          <span title={model.health_message}>
+                            {model.health_status === 'degraded' && (
+                              <AlertTriangle className="h-3 w-3 text-yellow-500" />
+                            )}
+                            {model.health_status === 'unavailable' && (
+                              <AlertCircle className="h-3 w-3 text-red-500" />
+                            )}
+                            {model.health_status === 'maintenance' && (
+                              <Wrench className="h-3 w-3 text-blue-500" />
+                            )}
+                          </span>
+                        )}
+                      </div>
                       {!isModelAvailable(model) && (
                         <span className="text-xs text-muted-foreground">
                           {model.tier_required}
                         </span>
                       )}
                     </div>
+                    {model.health_message && model.health_status !== 'healthy' && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {model.health_message}
+                      </p>
+                    )}
                   </div>
                 </CommandItem>
               ))}

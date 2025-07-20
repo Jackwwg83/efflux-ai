@@ -206,6 +206,12 @@ serve(async (req) => {
           p_tokens_used: usage.totalTokens
         })
 
+        // Record model success
+        await supabase.rpc('record_model_success', {
+          p_model: model,
+          p_provider: modelConfig.provider
+        })
+
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
@@ -216,6 +222,14 @@ serve(async (req) => {
         p_api_key_id: apiKey.id,
         p_error_message: error.message
       })
+      
+      // Record model failure
+      await supabase.rpc('record_model_failure', {
+        p_model: model,
+        p_provider: modelConfig.provider,
+        p_error_message: error.message
+      })
+      
       throw error
     }
 
