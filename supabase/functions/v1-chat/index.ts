@@ -12,6 +12,7 @@ interface ChatRequest {
     role: 'system' | 'user' | 'assistant'
     content: string
   }>
+  conversationId?: string
   stream?: boolean
   temperature?: number
   max_tokens?: number
@@ -26,7 +27,7 @@ serve(async (req) => {
   try {
     // 1. Parse request
     const body: ChatRequest = await req.json()
-    const { model, messages, stream = true, temperature, max_tokens } = body
+    const { model, messages, conversationId, stream = true, temperature, max_tokens } = body
 
     // 2. Verify authentication
     const authHeader = req.headers.get('Authorization')
@@ -59,11 +60,31 @@ serve(async (req) => {
       )
     }
 
-    // 5. Check user quota
+    // 5. Get assembled messages if conversation ID is provided
+    let finalMessages = messages
+    if (conversationId) {
+      const { data: assembledData, error: assembleError } = await supabase.rpc(
+        'assemble_conversation_messages',
+        {
+          p_conversation_id: conversationId,
+          p_model: model,
+          p_max_tokens: max_tokens
+        }
+      )
+
+      if (!assembleError && assembledData && assembledData.length > 0) {
+        const assembled = assembledData[0]
+        // Use assembled messages which includes system prompt
+        finalMessages = assembled.messages
+        console.log(`Using assembled messages with ${assembled.total_tokens} tokens, truncated: ${assembled.truncated}`)
+      }
+    }
+
+    // 6. Check user quota
     const { data: quotaCheck, error: quotaError } = await supabase.rpc('check_and_update_user_quota', {
       p_user_id: user.id,
       p_model: model,
-      p_estimated_tokens: estimateTokens(messages)
+      p_estimated_tokens: estimateTokens(finalMessages)
     })
 
     if (quotaError || !quotaCheck || quotaCheck.length === 0) {
@@ -138,7 +159,7 @@ serve(async (req) => {
         provider: modelConfig.provider,
         apiKey: apiKey.api_key,
         model: modelConfig.provider_model_id || model,
-        messages,
+        messages: finalMessages,
         stream,
         temperature: temperature ?? modelConfig.default_temperature,
         max_tokens: max_tokens ?? modelConfig.max_tokens

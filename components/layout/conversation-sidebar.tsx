@@ -62,6 +62,37 @@ export function ConversationSidebar() {
           loadConversations()
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          // Update conversation with latest message preview
+          if (payload.new && payload.new.conversation_id) {
+            const message = payload.new as Database['public']['Tables']['messages']['Row']
+            setConversations(prev => 
+              prev.map(conv => 
+                conv.id === message.conversation_id
+                  ? {
+                      ...conv,
+                      last_message_preview: message.content.slice(0, 100) + (message.content.length > 100 ? '...' : ''),
+                      message_count: (conv.message_count || 0) + 1,
+                      updated_at: new Date().toISOString()
+                    }
+                  : conv
+              ).sort((a, b) => {
+                // Keep favorites at top
+                if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1
+                // Then sort by updated_at
+                return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+              })
+            )
+          }
+        }
+      )
       .subscribe()
 
     return () => {

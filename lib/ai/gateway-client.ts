@@ -8,6 +8,7 @@ export interface ChatMessage {
 export interface ChatParams {
   model: string
   messages: ChatMessage[]
+  conversationId?: string
   temperature?: number
   maxTokens?: number
   onUpdate?: (content: string) => void
@@ -38,6 +39,7 @@ export class AIGatewayClient {
         body: JSON.stringify({
           model: params.model,
           messages: params.messages,
+          conversationId: params.conversationId,
           temperature: params.temperature,
           max_tokens: params.maxTokens,
           stream: true
