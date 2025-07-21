@@ -43,8 +43,8 @@ export function PromptSelector({ onOpenSettings }: PromptSelectorProps) {
   const { currentConversation } = useConversationStore()
 
   useEffect(() => {
+    loadTemplates() // Always load templates
     if (currentConversation) {
-      loadTemplates()
       loadCurrentConfig()
     }
   }, [currentConversation])
