@@ -5,6 +5,7 @@ import { MessageList } from './message-list'
 import { MessageInput } from './message-input'
 import { ModelSelector } from './model-selector'
 import { ContextIndicator } from './context-indicator'
+import { PromptSelector } from './prompt-selector'
 import { createClient } from '@/lib/supabase/client'
 import { useConversationStore } from '@/lib/stores/conversation'
 import { useToast } from '@/hooks/use-toast'
@@ -136,6 +137,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
       await aiClient.current.streamChat({
         model: currentConversation.model || 'gpt-3.5-turbo',
         messages: apiMessages,
+        conversationId: currentConversation.id,
         onUpdate: (chunk) => {
           accumulatedContent += chunk
           updateMessage(tempAssistantId, accumulatedContent)
@@ -177,14 +179,21 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
             })
 
             // Update conversation
+            const updateData: any = { 
+              last_message_at: new Date().toISOString(),
+              last_message_preview: finalContent.slice(0, 100) + (finalContent.length > 100 ? '...' : ''),
+              message_count: messages.length + 2, // Add 2 for user and assistant messages
+              total_tokens: (currentConversation.total_tokens || 0) + (usage?.totalTokens || 0)
+            }
+            
+            // Only update title if it's the first message
+            if (messages.length === 0 && content.length > 0) {
+              updateData.title = content.slice(0, 50) + (content.length > 50 ? '...' : '')
+            }
+            
             await supabase
               .from('conversations')
-              .update({ 
-                last_message_at: new Date().toISOString(),
-                ...(messages.length === 0 && { 
-                  title: content.slice(0, 50) + (content.length > 50 ? '...' : '') 
-                })
-              })
+              .update(updateData)
               .eq('id', currentConversation.id)
 
             // Reload quota status
@@ -262,6 +271,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
               {currentConversation?.title || 'New Chat'}
             </h2>
             <ModelSelector />
+            <PromptSelector />
           </div>
           <button
             onClick={onNewChat}
