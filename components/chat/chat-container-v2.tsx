@@ -102,6 +102,10 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         completion_tokens: null,
         total_tokens: null,
         created_at: new Date().toISOString(),
+        metadata: null,
+        is_pinned: null,
+        is_summarized: null,
+        summary_of: null,
       }
       addMessage(userMessage)
 
@@ -117,6 +121,10 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         completion_tokens: null,
         total_tokens: null,
         created_at: new Date().toISOString(),
+        metadata: null,
+        is_pinned: null,
+        is_summarized: null,
+        summary_of: null,
       }
       addMessage(assistantMessage)
       setStreamingMessageId(tempAssistantId)
