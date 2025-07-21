@@ -7,6 +7,8 @@ import { useToast } from '@/hooks/use-toast'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
+import Link from 'next/link'
+import { MessageSquare } from 'lucide-react'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -99,6 +101,28 @@ export default function SettingsPage() {
             <Button variant="outline" className="mt-4">
               View Billing
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              <CardTitle>Prompt Templates</CardTitle>
+            </div>
+            <CardDescription>
+              Manage system prompts for different AI models and use cases
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Create and customize prompt templates to define how AI models respond in different contexts
+            </p>
+            <Link href="/settings/prompts">
+              <Button variant="outline" className="mt-4">
+                Manage Prompts
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 
