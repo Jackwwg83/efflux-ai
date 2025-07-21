@@ -182,8 +182,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
             const updateData: any = { 
               last_message_at: new Date().toISOString(),
               last_message_preview: finalContent.slice(0, 100) + (finalContent.length > 100 ? '...' : ''),
-              message_count: messages.length + 2, // Add 2 for user and assistant messages
-              total_tokens: (currentConversation.total_tokens || 0) + (usage?.totalTokens || 0)
+              message_count: messages.length + 2 // Add 2 for user and assistant messages
             }
             
             // Only update title if it's the first message

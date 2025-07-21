@@ -28,12 +28,16 @@ interface PromptSelectorProps {
   onOpenSettings?: () => void
 }
 
+interface UserPromptConfigWithTemplate extends UserPromptConfig {
+  prompt_templates?: PromptTemplate
+}
+
 export function PromptSelector({ onOpenSettings }: PromptSelectorProps) {
   const supabase = createClient()
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [templates, setTemplates] = useState<PromptTemplate[]>([])
-  const [currentConfig, setCurrentConfig] = useState<UserPromptConfig | null>(null)
+  const [currentConfig, setCurrentConfig] = useState<UserPromptConfigWithTemplate | null>(null)
   const [loading, setLoading] = useState(true)
   
   const { currentConversation } = useConversationStore()
@@ -135,7 +139,7 @@ export function PromptSelector({ onOpenSettings }: PromptSelectorProps) {
     }
   }
 
-  const currentTemplate = currentConfig?.prompt_templates as PromptTemplate | undefined
+  const currentTemplate = currentConfig?.prompt_templates
   const groupedTemplates = templates.reduce((acc, template) => {
     const role = template.role || 'custom'
     if (!acc[role]) acc[role] = []

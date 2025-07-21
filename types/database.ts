@@ -115,6 +115,10 @@ export interface Database {
           created_at: string
           updated_at: string
           last_message_at: string | null
+          is_favorite: boolean | null
+          last_message_preview: string | null
+          message_count: number | null
+          total_tokens: number | null
         }
         Insert: {
           id?: string
@@ -125,6 +129,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
           last_message_at?: string | null
+          is_favorite?: boolean | null
+          last_message_preview?: string | null
+          message_count?: number | null
+          total_tokens?: number | null
         }
         Update: {
           id?: string
@@ -135,6 +143,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
           last_message_at?: string | null
+          is_favorite?: boolean | null
+          last_message_preview?: string | null
+          message_count?: number | null
+          total_tokens?: number | null
         }
       }
       messages: {
@@ -149,6 +161,10 @@ export interface Database {
           completion_tokens: number | null
           total_tokens: number | null
           created_at: string
+          metadata: Json | null
+          is_pinned: boolean | null
+          is_summarized: boolean | null
+          summary_of: string[] | null
         }
         Insert: {
           id?: string
@@ -161,6 +177,10 @@ export interface Database {
           completion_tokens?: number | null
           total_tokens?: number | null
           created_at?: string
+          metadata?: Json | null
+          is_pinned?: boolean | null
+          is_summarized?: boolean | null
+          summary_of?: string[] | null
         }
         Update: {
           id?: string
@@ -173,6 +193,10 @@ export interface Database {
           completion_tokens?: number | null
           total_tokens?: number | null
           created_at?: string
+          metadata?: Json | null
+          is_pinned?: boolean | null
+          is_summarized?: boolean | null
+          summary_of?: string[] | null
         }
       }
       usage_logs: {
@@ -258,6 +282,117 @@ export interface Database {
           is_active?: boolean
           created_at?: string
           updated_at?: string
+        }
+      }
+      prompt_templates: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          role: 'default' | 'programming' | 'writing' | 'analysis' | 'creative' | 'educational' | 'custom'
+          model_type: 'general' | 'claude' | 'gpt' | 'gemini' | null
+          template: string
+          variables: Json
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          role: 'default' | 'programming' | 'writing' | 'analysis' | 'creative' | 'educational' | 'custom'
+          model_type?: 'general' | 'claude' | 'gpt' | 'gemini' | null
+          template: string
+          variables?: Json
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          role?: 'default' | 'programming' | 'writing' | 'analysis' | 'creative' | 'educational' | 'custom'
+          model_type?: 'general' | 'claude' | 'gpt' | 'gemini' | null
+          template?: string
+          variables?: Json
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      user_prompt_configs: {
+        Row: {
+          id: string
+          user_id: string
+          conversation_id: string
+          template_id: string | null
+          custom_prompt: string | null
+          variables: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          conversation_id: string
+          template_id?: string | null
+          custom_prompt?: string | null
+          variables?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          conversation_id?: string
+          template_id?: string | null
+          custom_prompt?: string | null
+          variables?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      message_summaries: {
+        Row: {
+          id: string
+          conversation_id: string
+          start_message_id: string | null
+          end_message_id: string | null
+          message_count: number
+          summary_content: string
+          summary_tokens: number | null
+          original_tokens: number | null
+          compression_ratio: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          start_message_id?: string | null
+          end_message_id?: string | null
+          message_count: number
+          summary_content: string
+          summary_tokens?: number | null
+          original_tokens?: number | null
+          compression_ratio?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          start_message_id?: string | null
+          end_message_id?: string | null
+          message_count?: number
+          summary_content?: string
+          summary_tokens?: number | null
+          original_tokens?: number | null
+          compression_ratio?: number | null
+          created_at?: string
         }
       }
     }
