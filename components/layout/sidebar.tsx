@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageSquare, Settings, CreditCard, LogOut } from 'lucide-react'
+import { MessageSquare, Settings, CreditCard, LogOut, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 
 const navigation = [
   { name: 'Chat', href: '/chat', icon: MessageSquare },
@@ -18,6 +19,28 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    checkAdminStatus()
+  }, [])
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: adminUser } = await supabase
+        .from('admin_users')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single()
+
+      setIsAdmin(!!adminUser)
+    } catch (error) {
+      console.error('Error checking admin status:', error)
+    }
+  }
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -49,6 +72,24 @@ export function Sidebar() {
             </Link>
           )
         })}
+        
+        {isAdmin && (
+          <>
+            <div className="my-2 border-t" />
+            <Link
+              href="/admin"
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                pathname.startsWith('/admin')
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Shield className="h-4 w-4" />
+              Admin Panel
+            </Link>
+          </>
+        )}
       </nav>
       
       <div className="border-t p-4">

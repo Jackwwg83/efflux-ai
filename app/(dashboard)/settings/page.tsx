@@ -108,21 +108,16 @@ export default function SettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              <CardTitle>AI Presets</CardTitle>
+              <CardTitle>Chat Preferences</CardTitle>
             </div>
             <CardDescription>
-              Configure AI presets for different use cases and scenarios
+              Customize your chat experience
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Manage preset configurations that define how the AI assistant behaves in different contexts
+              Your default AI preset and other chat preferences are managed directly in the chat interface
             </p>
-            <Link href="/settings/presets">
-              <Button variant="outline" className="mt-4">
-                Manage Presets
-              </Button>
-            </Link>
           </CardContent>
         </Card>
 
