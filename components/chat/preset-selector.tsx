@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Bot, Check, ChevronDown, Sparkles } from 'lucide-react'
 import * as Icons from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -194,7 +194,11 @@ export function PresetSelector() {
   const getIcon = (iconName: string | null) => {
     if (!iconName) return Bot
     const Icon = Icons[iconName as keyof typeof Icons]
-    return Icon || Bot
+    // Type guard to ensure it's a valid component
+    if (typeof Icon === 'function') {
+      return Icon as React.ComponentType<any>
+    }
+    return Bot
   }
 
   const renderPresetItem = (preset: Preset) => {
