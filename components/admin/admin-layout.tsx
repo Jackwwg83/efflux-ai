@@ -18,7 +18,8 @@ import {
   ChevronRight,
   Shield,
   FileText,
-  Activity
+  Activity,
+  Bot
 } from 'lucide-react'
 
 interface NavItem {
@@ -34,6 +35,12 @@ const navItems: NavItem[] = [
     href: '/admin',
     icon: LayoutDashboard,
     description: 'System overview and statistics'
+  },
+  {
+    title: 'AI Presets',
+    href: '/admin/presets',
+    icon: Bot,
+    description: 'Manage AI behavior presets'
   },
   {
     title: 'API Keys',
