@@ -108,19 +108,19 @@ export default function SettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              <CardTitle>Prompt Templates</CardTitle>
+              <CardTitle>AI Presets</CardTitle>
             </div>
             <CardDescription>
-              Manage system prompts for different AI models and use cases
+              Configure AI presets for different use cases and scenarios
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Create and customize prompt templates to define how AI models respond in different contexts
+              Manage preset configurations that define how the AI assistant behaves in different contexts
             </p>
-            <Link href="/settings/prompts">
+            <Link href="/settings/presets">
               <Button variant="outline" className="mt-4">
-                Manage Prompts
+                Manage Presets
               </Button>
             </Link>
           </CardContent>
