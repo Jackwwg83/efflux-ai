@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
+import { Progress } from '@/components/ui/progress'
 import { 
   Trash2, Plus, Save, Copy, ChevronUp, ChevronDown, 
   Bot, Settings, Sparkles, Palette, Hash
