@@ -132,12 +132,12 @@ export function PresetSelector() {
       if (!user.user) return
 
       // Get the user's preset selection
+      // Note: RLS policy automatically filters by user_id
       const { data: selection, error: selectionError } = await supabase
         .from('user_preset_selections')
         .select('preset_id')
         .eq('conversation_id', currentConversation.id)
-        .eq('user_id', user.user.id)
-        .single()
+        .maybeSingle()
 
       if (!selectionError && selection?.preset_id) {
         // Get the preset details
