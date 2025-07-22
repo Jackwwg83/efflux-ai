@@ -103,6 +103,22 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
     }
   }
 
+  // Check if user is admin
+  const isAdmin = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      return user?.email === 'jackwwg@gmail.com' || user?.email === 'admin@efflux.ai'
+    } catch {
+      return false
+    }
+  }
+
+  const [isUserAdmin, setIsUserAdmin] = useState(false)
+
+  useEffect(() => {
+    isAdmin().then(setIsUserAdmin)
+  }, [])
+
   const sendMessage = async (content: string) => {
     if (!currentConversation || isLoading) return
 
@@ -327,7 +343,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         {quotaStatus && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Daily Usage ({quotaStatus.tier})</span>
+              <span>Daily Usage ({quotaStatus.tier}{isUserAdmin ? ' - Admin' : ''})</span>
               <span>{quotaStatus.tokens_used_today} / {getDailyLimit()} tokens ({quotaPercentage}%)</span>
             </div>
             <Progress value={quotaPercentage} className="h-1" />
@@ -367,8 +383,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         onSendMessage={sendMessage}
         isLoading={isLoading}
         onStopStreaming={stopStreaming}
-        disabled={false} // Temporarily disabled quota check for testing
-        // disabled={quotaPercentage >= 100}
+        disabled={!isUserAdmin && quotaPercentage >= 100}
         onInputChange={setCurrentInput}
       />
     </div>
