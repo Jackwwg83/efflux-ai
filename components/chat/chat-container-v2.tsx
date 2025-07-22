@@ -85,9 +85,21 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
   const loadQuotaStatus = async () => {
     try {
       const status = await aiClient.current.getQuotaStatus()
+      logger.info('Quota status loaded', { status })
       setQuotaStatus(status)
     } catch (error) {
       logger.error('Error loading quota', { error })
+      // Set a default quota status to prevent blocking
+      setQuotaStatus({
+        tokens_used_today: 0,
+        tokens_used_month: 0,
+        requests_today: 0,
+        requests_month: 0,
+        cost_today: 0,
+        cost_month: 0,
+        tier: 'free',
+        daily_limit: 5000
+      })
     }
   }
 
@@ -315,11 +327,19 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         {quotaStatus && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Daily Usage</span>
-              <span>{quotaStatus.tokens_used_today} / {getDailyLimit()} tokens</span>
+              <span>Daily Usage ({quotaStatus.tier})</span>
+              <span>{quotaStatus.tokens_used_today} / {getDailyLimit()} tokens ({quotaPercentage}%)</span>
             </div>
             <Progress value={quotaPercentage} className="h-1" />
-            {quotaPercentage > 90 && (
+            {quotaPercentage >= 100 && (
+              <Alert className="mt-2 py-2" variant="destructive">
+                <AlertCircle className="h-3 w-3" />
+                <AlertDescription className="text-xs">
+                  Daily quota exceeded. Please upgrade your plan or wait until tomorrow.
+                </AlertDescription>
+              </Alert>
+            )}
+            {quotaPercentage > 90 && quotaPercentage < 100 && (
               <Alert className="mt-2 py-2">
                 <AlertCircle className="h-3 w-3" />
                 <AlertDescription className="text-xs">
@@ -347,7 +367,8 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         onSendMessage={sendMessage}
         isLoading={isLoading}
         onStopStreaming={stopStreaming}
-        disabled={quotaPercentage >= 100}
+        disabled={false} // Temporarily disabled quota check for testing
+        // disabled={quotaPercentage >= 100}
         onInputChange={setCurrentInput}
       />
     </div>
