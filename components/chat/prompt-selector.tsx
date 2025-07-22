@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Check, ChevronDown, Plus, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/utils/logger'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -61,7 +62,7 @@ export function PromptSelector({ onOpenSettings }: PromptSelectorProps) {
       if (error) throw error
       setTemplates(data || [])
     } catch (error) {
-      console.error('Error loading templates:', error)
+      logger.error('Error loading templates', { error })
     }
   }
 
@@ -82,7 +83,7 @@ export function PromptSelector({ onOpenSettings }: PromptSelectorProps) {
       if (error && error.code !== 'PGRST116') throw error
       setCurrentConfig(data)
     } catch (error) {
-      console.error('Error loading config:', error)
+      logger.error('Error loading config', { error, conversationId: currentConversation?.id })
     } finally {
       setLoading(false)
     }
@@ -130,7 +131,7 @@ export function PromptSelector({ onOpenSettings }: PromptSelectorProps) {
           : 'Switched to default prompt',
       })
     } catch (error) {
-      console.error('Error selecting template:', error)
+      logger.error('Error selecting template', { error, templateId })
       toast({
         title: 'Error',
         description: 'Failed to update prompt template',

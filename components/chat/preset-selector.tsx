@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Bot, Check, ChevronDown, Sparkles } from 'lucide-react'
 import * as Icons from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/utils/logger'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -117,7 +118,7 @@ export function PresetSelector() {
         }
       }
     } catch (error) {
-      console.error('Error loading presets:', error)
+      logger.error('Error loading presets', { error })
     } finally {
       setLoading(false)
     }
@@ -152,7 +153,7 @@ export function PresetSelector() {
       }
     } catch (error) {
       // No selection yet, use default
-      console.log('No preset selection found, using default')
+      logger.info('No preset selection found, using default')
     }
   }
 
@@ -192,7 +193,7 @@ export function PresetSelector() {
         description: `Switched to "${preset.name}"`,
       })
     } catch (error) {
-      console.error('Error selecting preset:', error)
+      logger.error('Error selecting preset', { error })
       toast({
         title: 'Error',
         description: 'Failed to change preset',

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { MessageSquare, Settings, CreditCard, LogOut, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/utils/logger'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -38,7 +39,7 @@ export function Sidebar() {
 
       setIsAdmin(!!adminUser)
     } catch (error) {
-      console.error('Error checking admin status:', error)
+      logger.error('Error checking admin status', { error })
     }
   }
 

@@ -44,8 +44,8 @@ export default function RegisterPage() {
 
       // Redirect to login with success message
       router.push('/login?message=Registration successful! Please check your email to confirm your account.')
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
@@ -64,8 +64,8 @@ export default function RegisterPage() {
       })
 
       if (error) throw error
-    } catch (error: any) {
-      setError(error.message)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An error occurred')
       setLoading(false)
     }
   }

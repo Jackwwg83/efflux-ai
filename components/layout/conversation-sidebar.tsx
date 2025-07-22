@@ -16,6 +16,7 @@ import {
   Edit2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/utils/logger'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
@@ -111,7 +112,7 @@ export function ConversationSidebar() {
       if (error) throw error
       setConversations(data || [])
     } catch (error) {
-      console.error('Error loading conversations:', error)
+      logger.error('Error loading conversations', { error })
     } finally {
       setLoading(false)
     }
@@ -145,7 +146,7 @@ export function ConversationSidebar() {
         router.push('/chat')
       }
     } catch (error) {
-      console.error('Error creating conversation:', error)
+      logger.error('Error creating conversation', { error })
     }
   }
 
@@ -156,7 +157,7 @@ export function ConversationSidebar() {
         .update({ is_favorite: !conversation.is_favorite })
         .eq('id', conversation.id)
     } catch (error) {
-      console.error('Error toggling favorite:', error)
+      logger.error('Error toggling favorite', { error, conversationId: conversation.id })
     }
   }
 
@@ -172,7 +173,7 @@ export function ConversationSidebar() {
         router.push('/chat')
       }
     } catch (error) {
-      console.error('Error deleting conversation:', error)
+      logger.error('Error deleting conversation', { error, conversationId: id })
     }
   }
 

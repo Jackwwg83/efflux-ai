@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { MessageList } from './message-list'
 import { MessageInput } from './message-input'
 import { ModelSelector } from './model-selector'
+import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/client'
 import { useConversationStore } from '@/lib/stores/conversation'
 import { useToast } from '@/hooks/use-toast'
@@ -50,7 +51,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
 
       setMessages(messages || [])
     } catch (error) {
-      console.error('Error loading messages:', error)
+      logger.error('Error loading messages', { error, conversationId: currentConversation?.id })
       toast({
         title: 'Error',
         description: 'Failed to load messages',
@@ -165,7 +166,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
                 throw new Error(data.error)
               }
             } catch (e) {
-              console.error('Error parsing SSE data:', e)
+              logger.error('Error parsing SSE data', { error: e })
             }
           }
         }
@@ -181,7 +182,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
       }
 
     } catch (error: any) {
-      console.error('Error sending message:', error)
+      logger.error('Error sending message', { error, conversationId: currentConversation?.id })
       
       if (error.name !== 'AbortError') {
         toast({

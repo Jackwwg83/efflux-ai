@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/utils/logger'
+import type { User } from '@supabase/supabase-js'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 import {
   LayoutDashboard,
   Key,
@@ -19,8 +22,10 @@ import {
   Shield,
   FileText,
   Activity,
-  Bot
+  Bot,
+  AlertCircle
 } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface NavItem {
   title: string
@@ -83,7 +88,7 @@ const navItems: NavItem[] = [
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const supabase = createClient()
@@ -108,17 +113,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         .eq('user_id', user.id)
         .single()
 
-      console.log('Admin check:', { userId: user.id, email: user.email, adminData, adminError })
+      logger.info('Admin check', { userId: user.id, email: user.email, adminData, adminError })
 
       if (adminError || !adminData) {
-        console.error('Not an admin, redirecting...', adminError)
+        logger.warn('Not an admin, redirecting', { error: adminError, userId: user.id })
         router.push('/chat')
         return
       }
 
       setUser(user)
     } catch (error) {
-      console.error('Error checking user:', error)
+      logger.error('Error checking user', { error, pathname })
       router.push('/login')
     } finally {
       setLoading(false)
@@ -147,7 +152,38 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pageTitle = currentPage?.title || 'Admin'
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <ErrorBoundary
+      fallback={
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <Alert variant="destructive" className="max-w-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Admin Panel Error</AlertTitle>
+            <AlertDescription className="mt-2 space-y-2">
+              <p>
+                We encountered an error loading the admin panel. Please try refreshing the page.
+              </p>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                >
+                  Refresh Page
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push('/chat')}
+                >
+                  Return to Chat
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      }
+    >
+      <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
@@ -278,5 +314,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </div>
+    </ErrorBoundary>
   )
 }

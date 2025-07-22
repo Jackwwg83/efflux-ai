@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { MessageList } from './message-list'
 import { MessageInput } from './message-input'
+import { logger } from '@/lib/utils/logger'
 import { ModelSelector } from './model-selector'
 import { ContextIndicator } from './context-indicator'
 import { PresetSelector } from './preset-selector'
@@ -17,6 +18,17 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 type Message = Database['public']['Tables']['messages']['Row']
 
+interface QuotaStatus {
+  tokens_used_today: number
+  tokens_used_month: number
+  requests_today: number
+  requests_month: number
+  cost_today: number
+  cost_month: number
+  tier: 'free' | 'pro' | 'max'
+  daily_limit: number
+}
+
 interface ChatContainerProps {
   onNewChat: () => void
 }
@@ -26,7 +38,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
-  const [quotaStatus, setQuotaStatus] = useState<any>(null)
+  const [quotaStatus, setQuotaStatus] = useState<QuotaStatus | null>(null)
   const [currentInput, setCurrentInput] = useState('')
   const abortControllerRef = useRef<AbortController | null>(null)
   const aiClient = useRef(new AIGatewayClient())
@@ -61,7 +73,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
 
       setMessages(messages || [])
     } catch (error) {
-      console.error('Error loading messages:', error)
+      logger.error('Error loading messages', { error, conversationId: currentConversation?.id })
       toast({
         title: 'Error',
         description: 'Failed to load messages',
@@ -75,7 +87,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
       const status = await aiClient.current.getQuotaStatus()
       setQuotaStatus(status)
     } catch (error) {
-      console.error('Error loading quota:', error)
+      logger.error('Error loading quota', { error })
     }
   }
 
@@ -206,7 +218,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
             // Reload quota status
             loadQuotaStatus()
           } catch (error) {
-            console.error('Error saving messages:', error)
+            logger.error('Error saving messages', { error, conversationId: currentConversation.id })
           } finally {
             // Reset loading state after streaming completes
             setIsLoading(false)
@@ -215,7 +227,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
           }
         },
         onError: (error) => {
-          console.error('Streaming error:', error)
+          logger.error('Streaming error', { error, model: currentConversation.model, conversationId: currentConversation.id })
           toast({
             title: 'Error',
             description: error.message,
@@ -229,7 +241,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
       })
 
     } catch (error: any) {
-      console.error('Error sending message:', error)
+      logger.error('Error sending message', { error, model: currentConversation?.model })
       
       if (error.name !== 'AbortError') {
         toast({
