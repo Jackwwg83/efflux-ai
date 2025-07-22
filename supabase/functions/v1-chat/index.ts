@@ -6,201 +6,95 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface ChatRequest {
-  model: string
-  messages: Array<{
-    role: 'system' | 'user' | 'assistant'
-    content: string
-  }>
-  conversationId?: string
-  stream?: boolean
-  temperature?: number
-  max_tokens?: number
-}
-
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // 1. Parse request
-    const body: ChatRequest = await req.json()
-    const { model, messages, conversationId, stream = true, temperature, max_tokens } = body
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    // 2. Verify authentication
+    // Get auth token from request
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }), 
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+      throw new Error('No authorization header')
     }
 
-    // 3. Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-    // 4. Get user from token
+    // Verify user
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
     
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }), 
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    if (authError || !user) {
+      throw new Error('Unauthorized')
     }
 
-    // 5. Get preset configuration if conversation ID is provided
-    let finalMessages = messages
-    let presetTemperature = temperature
-    let presetMaxTokens = max_tokens
-    
-    if (conversationId) {
-      // Get preset for this conversation
-      const { data: presetData, error: presetError } = await supabase.rpc(
-        'get_preset_for_conversation',
-        {
-          p_conversation_id: conversationId,
-          p_user_id: user.id
-        }
-      )
+    // Parse request body
+    const { model, messages, stream = true, temperature, max_tokens, conversationId } = await req.json()
 
-      if (!presetError && presetData && presetData.length > 0) {
-        const preset = presetData[0]
-        
-        // Add system prompt from preset
+    if (!model || !messages) {
+      throw new Error('Missing required parameters: model and messages')
+    }
+
+    // Get preset configuration if conversationId is provided
+    let finalMessages = messages
+    if (conversationId) {
+      const { data: presetData } = await supabase.rpc('get_preset_for_conversation', {
+        p_conversation_id: conversationId,
+        p_user_id: user.id
+      })
+      
+      if (presetData && presetData.system_prompt) {
+        // Ensure system message is at the beginning
         finalMessages = [
-          {
-            role: 'system',
-            content: preset.system_prompt
-          },
-          ...messages
+          { role: 'system', content: presetData.system_prompt },
+          ...messages.filter((m: any) => m.role !== 'system')
         ]
-        
-        // Use preset settings if not overridden
-        presetTemperature = temperature ?? preset.temperature
-        presetMaxTokens = max_tokens ?? preset.max_tokens
-        
-        console.log(`Using preset with temperature: ${presetTemperature}`)
       }
     }
 
-    // 6. Check user quota
-    const { data: quotaCheck, error: quotaError } = await supabase.rpc('check_and_update_user_quota', {
-      p_user_id: user.id,
-      p_model: model,
-      p_estimated_tokens: estimateTokens(finalMessages)
-    })
-
-    if (quotaError || !quotaCheck || quotaCheck.length === 0) {
-      console.error('Quota check error:', quotaError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to check quota' }), 
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    const quota = quotaCheck[0]
-    if (!quota.can_use) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Quota exceeded',
-          details: {
-            daily_limit: quota.daily_limit,
-            used_today: quota.used_today,
-            remaining: quota.remaining
-          }
-        }), 
-        { 
-          status: 429, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
-    }
-
-    // 6. Get model configuration
-    const { data: modelConfig } = await supabase
+    // Get model configuration
+    const { data: modelConfig, error: modelError } = await supabase
       .from('model_configs')
       .select('*')
       .eq('model', model)
       .eq('is_active', true)
       .single()
 
-    if (!modelConfig) {
-      return new Response(
-        JSON.stringify({ error: 'Model not available' }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    if (modelError || !modelConfig) {
+      throw new Error('Model not found or not active')
     }
 
-    // 7. Get available API key
-    const { data: apiKeyData, error: keyError } = await supabase.rpc('get_available_api_key', {
+    // Get available API key using the RPC function
+    const { data: apiKeyData, error: apiKeyError } = await supabase.rpc('get_available_api_key', {
       p_provider: modelConfig.provider
     })
 
-    if (keyError || !apiKeyData || apiKeyData.length === 0) {
-      console.error('API key error:', keyError)
-      return new Response(
-        JSON.stringify({ error: 'No available API key' }), 
-        { 
-          status: 503, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    if (apiKeyError || !apiKeyData || apiKeyData.length === 0) {
+      console.error('API key error:', apiKeyError)
+      throw new Error(`No available API key for provider: ${modelConfig.provider}`)
     }
 
     const apiKey = apiKeyData[0]
+
     const startTime = Date.now()
 
-    // 8. Forward request to provider
     try {
+      // Forward request to provider
       const providerResponse = await forwardToProvider({
         provider: modelConfig.provider,
         apiKey: apiKey.api_key,
-        model: modelConfig.provider_model_id || model,
+        model,
         messages: finalMessages,
         stream,
-        temperature: presetTemperature ?? modelConfig.default_temperature,
-        max_tokens: presetMaxTokens ?? modelConfig.max_tokens
+        temperature,
+        max_tokens
       })
 
-      if (!providerResponse.ok) {
-        // Record API key error
-        await supabase.rpc('record_api_key_error', {
-          p_api_key_id: apiKey.id,
-          p_error_message: `HTTP ${providerResponse.status}: ${providerResponse.statusText}`
-        })
-        
-        const errorText = await providerResponse.text()
-        return new Response(
-          JSON.stringify({ 
-            error: 'Provider API error', 
-            details: errorText 
-          }), 
-          { 
-            status: providerResponse.status, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
-
-      // 9. Handle response based on streaming
+      // Handle response based on streaming
       if (stream) {
         // For streaming, we need to intercept and count tokens
         return handleStreamResponse({
@@ -211,7 +105,8 @@ serve(async (req) => {
           provider: modelConfig.provider,
           startTime,
           modelConfig,
-          supabase
+          supabase,
+          messages: finalMessages
         })
       } else {
         // For non-streaming, parse and record usage
@@ -236,18 +131,6 @@ serve(async (req) => {
           status: 'success'
         })
 
-        // Record API key success
-        await supabase.rpc('record_api_key_success', {
-          p_api_key_id: apiKey.id,
-          p_tokens_used: usage.totalTokens
-        })
-
-        // Record model success
-        await supabase.rpc('record_model_success', {
-          p_model: model,
-          p_provider: modelConfig.provider
-        })
-
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
@@ -256,13 +139,6 @@ serve(async (req) => {
       // Record API key error
       await supabase.rpc('record_api_key_error', {
         p_api_key_id: apiKey.id,
-        p_error_message: error.message
-      })
-      
-      // Record model failure
-      await supabase.rpc('record_model_failure', {
-        p_model: model,
-        p_provider: modelConfig.provider,
         p_error_message: error.message
       })
       
@@ -303,15 +179,15 @@ async function forwardToProvider(params: any) {
       })
       
     case 'anthropic':
-      // Transform messages format for Anthropic
+      // Convert messages format for Anthropic
       const anthropicMessages = messages
-        .filter(m => m.role !== 'system')
-        .map(m => ({
+        .filter((m: any) => m.role !== 'system')
+        .map((m: any) => ({
           role: m.role,
           content: m.content
         }))
       
-      const systemMessage = messages.find(m => m.role === 'system')
+      const systemMessage = messages.find((m: any) => m.role === 'system')
       
       return fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -323,40 +199,32 @@ async function forwardToProvider(params: any) {
         body: JSON.stringify({
           model,
           messages: anthropicMessages,
-          ...(systemMessage && { system: systemMessage.content }),
-          max_tokens: max_tokens || 4096,
+          system: systemMessage?.content,
+          stream,
           temperature,
-          stream
+          max_tokens: max_tokens || 4096
         })
       })
       
     case 'google':
-      // Transform for Gemini API
-      // Convert messages to contents array format
-      const geminiContents = messages
-        .filter(m => m.role !== 'system')
-        .map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }]
-        }))
+      // Convert messages for Google format
+      const googleMessages = messages.map((m: any) => ({
+        role: m.role === 'assistant' ? 'model' : m.role,
+        parts: [{ text: m.content }]
+      }))
       
-      // Add system message to the first user message if exists
-      const geminiSystemMessage = messages.find(m => m.role === 'system')
-      if (geminiSystemMessage && geminiContents.length > 0 && geminiContents[0].role === 'user') {
-        geminiContents[0].parts[0].text = geminiSystemMessage.content + '\n\n' + geminiContents[0].parts[0].text
-      }
-      
-      // Use v1 API endpoint with streaming support
-      const endpoint = stream ? 'streamGenerateContent' : 'generateContent'
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/${model}:${endpoint}?key=${apiKey}${stream ? '&alt=sse' : ''}`
-      
-      return fetch(geminiUrl, {
+      return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          contents: geminiContents,
+          contents: messages.map((m: any) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+          })),
           generationConfig: {
-            temperature: temperature || 1.0,
+            temperature: temperature || 0.7,
             maxOutputTokens: max_tokens || 8192,
             candidateCount: 1
           }
@@ -370,76 +238,113 @@ async function forwardToProvider(params: any) {
 
 // Handle streaming responses
 async function handleStreamResponse(params: any) {
-  const { response, userId, model, apiKeyId, provider, startTime, modelConfig, supabase } = params
+  const { response, userId, model, apiKeyId, provider, startTime, modelConfig, supabase, messages } = params
   
   const encoder = new TextEncoder()
   const decoder = new TextDecoder()
   
   let totalTokens = 0
   let responseContent = ''
+  let usageData: any = null
   
-  // Create transform stream to intercept and forward
-  const transformStream = new TransformStream({
-    async transform(chunk, controller) {
-      // Forward chunk to client
-      controller.enqueue(chunk)
+  // Create a new readable stream that processes the provider's stream
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = response.body.getReader()
       
-      // Decode and accumulate for token counting
-      const text = decoder.decode(chunk, { stream: true })
-      responseContent += text
-    },
-    
-    async flush() {
-      // Stream ended, record usage
-      const latency = Date.now() - startTime
-      
-      // Estimate tokens (provider-specific parsing would be more accurate)
-      const estimatedTokens = Math.ceil(responseContent.length / 4)
-      const promptTokens = estimateTokens(params.messages || [])
-      totalTokens = promptTokens + estimatedTokens
-      
-      // Send token usage info to client
-      const usageData = {
-        promptTokens,
-        completionTokens: estimatedTokens,
-        totalTokens,
-        model: params.model,
-        provider
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          
+          if (done) {
+            // Stream ended - send usage data and [DONE] signal
+            const latency = Date.now() - startTime
+            
+            // Estimate tokens if we don't have actual usage
+            if (!usageData) {
+              const estimatedTokens = Math.ceil(responseContent.length / 4)
+              const promptTokens = estimateTokens(messages || [])
+              totalTokens = promptTokens + estimatedTokens
+              
+              usageData = {
+                promptTokens,
+                completionTokens: estimatedTokens,
+                totalTokens,
+                model,
+                provider
+              }
+            }
+            
+            // Send usage data
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'usage', usage: usageData })}\n\n`))
+            
+            // Send [DONE] signal
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+            
+            // Record usage in database
+            await recordUsage({
+              supabase,
+              userId,
+              model,
+              provider,
+              apiKeyId,
+              promptTokens: usageData.promptTokens,
+              completionTokens: usageData.completionTokens,
+              totalTokens: usageData.totalTokens,
+              cost: calculateCost(usageData, modelConfig),
+              latency,
+              status: 'success'
+            })
+            
+            // Record API key success
+            await supabase.rpc('record_api_key_success', {
+              p_api_key_id: apiKeyId,
+              p_tokens_used: usageData.totalTokens
+            })
+            
+            controller.close()
+            break
+          }
+          
+          // Forward the chunk to client
+          controller.enqueue(value)
+          
+          // Decode and accumulate for token counting
+          const text = decoder.decode(value, { stream: true })
+          responseContent += text
+          
+          // Try to parse usage from the stream (some providers include it)
+          // This is provider-specific parsing
+          if (provider === 'openai' && text.includes('"usage"')) {
+            try {
+              const lines = text.split('\n')
+              for (const line of lines) {
+                if (line.startsWith('data: ') && line.includes('"usage"')) {
+                  const data = JSON.parse(line.slice(6))
+                  if (data.usage) {
+                    usageData = {
+                      promptTokens: data.usage.prompt_tokens || 0,
+                      completionTokens: data.usage.completion_tokens || 0,
+                      totalTokens: data.usage.total_tokens || 0,
+                      model,
+                      provider
+                    }
+                  }
+                }
+              }
+            } catch (e) {
+              // Ignore parsing errors
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Stream processing error:', error)
+        controller.error(error)
       }
-      
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'usage', usage: usageData })}\n\n`))
-      
-      // Send [DONE] signal to properly end the stream
-      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-      
-      // Record usage
-      await recordUsage({
-        supabase,
-        userId,
-        model,
-        provider,
-        apiKeyId,
-        promptTokens,
-        completionTokens: estimatedTokens,
-        totalTokens,
-        cost: calculateCost({
-          promptTokens,
-          completionTokens: estimatedTokens,
-          totalTokens
-        }, modelConfig),
-        latency,
-        status: 'success'
-      })
-      
-      // Record API key success
-      await supabase.rpc('record_api_key_success', {
-        p_api_key_id: apiKeyId,
-        p_tokens_used: totalTokens
-      })
     }
   })
   
-  return new Response(response.body.pipeThrough(transformStream), {
+  return new Response(stream, {
     headers: {
       ...corsHeaders,
       'Content-Type': 'text/event-stream',
@@ -479,23 +384,25 @@ function extractUsage(response: any, provider: string) {
       }
       
     case 'google':
-      // Gemini doesn't provide token counts in response
-      // Would need to estimate based on content
+      return {
+        promptTokens: response.usageMetadata?.promptTokenCount || 0,
+        completionTokens: response.usageMetadata?.candidatesTokenCount || 0,
+        totalTokens: response.usageMetadata?.totalTokenCount || 0
+      }
+      
+    default:
       return {
         promptTokens: 0,
         completionTokens: 0,
         totalTokens: 0
       }
-      
-    default:
-      return { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
   }
 }
 
 // Calculate cost based on usage and model config
 function calculateCost(usage: any, modelConfig: any): number {
-  const promptCost = (usage.promptTokens / 1000000) * (modelConfig.input_price || 0)
-  const completionCost = (usage.completionTokens / 1000000) * (modelConfig.output_price || 0)
+  const promptCost = (usage.promptTokens / 1000) * (modelConfig.input_cost_per_1k || 0)
+  const completionCost = (usage.completionTokens / 1000) * (modelConfig.output_cost_per_1k || 0)
   return promptCost + completionCost
 }
 
@@ -503,24 +410,30 @@ function calculateCost(usage: any, modelConfig: any): number {
 async function recordUsage(params: any) {
   const { supabase, userId, model, provider, apiKeyId, promptTokens, completionTokens, totalTokens, cost, latency, status } = params
   
-  // Insert usage log
-  await supabase.from('usage_logs').insert({
-    user_id: userId,
-    model,
-    provider,
-    api_key_id: apiKeyId,
-    prompt_tokens: promptTokens,
-    completion_tokens: completionTokens,
-    total_tokens: totalTokens,
-    estimated_cost: cost,
-    latency_ms: latency,
-    status
-  })
-  
-  // Update user usage
-  await supabase.rpc('update_user_usage', {
-    p_user_id: userId,
-    p_tokens: totalTokens,
-    p_cost: cost
-  })
+  try {
+    // Record in usage_logs table (correct table name)
+    await supabase
+      .from('usage_logs')
+      .insert({
+        user_id: userId,
+        model,
+        provider,
+        api_key_id: apiKeyId,
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+        estimated_cost: cost,
+        latency_ms: latency,
+        status
+      })
+    
+    // Update user usage
+    await supabase.rpc('update_user_usage', {
+      p_user_id: userId,
+      p_tokens: totalTokens,
+      p_cost: cost
+    })
+  } catch (error) {
+    console.error('Error recording usage:', error)
+  }
 }
