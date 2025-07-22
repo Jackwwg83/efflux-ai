@@ -51,18 +51,22 @@
 ### 5. 部署 Edge Functions
 
 ```bash
-# 安装 Supabase CLI
+# 安装 Supabase CLI（如果未安装）
 npm install -g supabase
 
-# 登录
+# 方法一：使用访问令牌（推荐用于 CI/CD 和自动化部署）
+export SUPABASE_ACCESS_TOKEN="sbp_df5ff67c1b111b4a15a9b1d38b42cc80e16c1381"
+
+# 部署 v1-chat Edge Function
+npx supabase functions deploy v1-chat --no-verify-jwt
+
+# 方法二：交互式登录（本地开发）
 supabase login
-
-# 链接项目
-supabase link --project-ref your-project-ref
-
-# 部署 Edge Functions
-supabase functions deploy chat
+supabase link --project-ref lzvwduadnunbtxqaqhkg
+supabase functions deploy v1-chat --no-verify-jwt
 ```
+
+**重要**：当修改 `/supabase/functions/v1-chat/index.ts` 后，必须重新部署 Edge Function！
 
 ### 6. 配置 API 密钥
 
