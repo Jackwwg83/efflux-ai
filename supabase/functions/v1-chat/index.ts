@@ -60,23 +60,38 @@ serve(async (req) => {
       )
     }
 
-    // 5. Get assembled messages if conversation ID is provided
+    // 5. Get preset configuration if conversation ID is provided
     let finalMessages = messages
+    let presetTemperature = temperature
+    let presetMaxTokens = max_tokens
+    
     if (conversationId) {
-      const { data: assembledData, error: assembleError } = await supabase.rpc(
-        'assemble_conversation_messages',
+      // Get preset for this conversation
+      const { data: presetData, error: presetError } = await supabase.rpc(
+        'get_preset_for_conversation',
         {
           p_conversation_id: conversationId,
-          p_model: model,
-          p_max_tokens: max_tokens
+          p_user_id: user.id
         }
       )
 
-      if (!assembleError && assembledData && assembledData.length > 0) {
-        const assembled = assembledData[0]
-        // Use assembled messages which includes system prompt
-        finalMessages = assembled.messages
-        console.log(`Using assembled messages with ${assembled.total_tokens} tokens, truncated: ${assembled.truncated}`)
+      if (!presetError && presetData && presetData.length > 0) {
+        const preset = presetData[0]
+        
+        // Add system prompt from preset
+        finalMessages = [
+          {
+            role: 'system',
+            content: preset.system_prompt
+          },
+          ...messages
+        ]
+        
+        // Use preset settings if not overridden
+        presetTemperature = temperature ?? preset.temperature
+        presetMaxTokens = max_tokens ?? preset.max_tokens
+        
+        console.log(`Using preset with temperature: ${presetTemperature}`)
       }
     }
 
@@ -161,8 +176,8 @@ serve(async (req) => {
         model: modelConfig.provider_model_id || model,
         messages: finalMessages,
         stream,
-        temperature: temperature ?? modelConfig.default_temperature,
-        max_tokens: max_tokens ?? modelConfig.max_tokens
+        temperature: presetTemperature ?? modelConfig.default_temperature,
+        max_tokens: presetMaxTokens ?? modelConfig.max_tokens
       })
 
       if (!providerResponse.ok) {

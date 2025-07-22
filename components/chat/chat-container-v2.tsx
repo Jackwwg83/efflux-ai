@@ -5,7 +5,7 @@ import { MessageList } from './message-list'
 import { MessageInput } from './message-input'
 import { ModelSelector } from './model-selector'
 import { ContextIndicator } from './context-indicator'
-import { PromptSelector } from './prompt-selector'
+import { PresetSelector } from './preset-selector'
 import { createClient } from '@/lib/supabase/client'
 import { useConversationStore } from '@/lib/stores/conversation'
 import { useToast } from '@/hooks/use-toast'
@@ -278,7 +278,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
               {currentConversation?.title || 'New Chat'}
             </h2>
             <ModelSelector />
-            <PromptSelector />
+            <PresetSelector />
           </div>
           <button
             onClick={onNewChat}
