@@ -262,7 +262,7 @@ export function PresetSelector() {
     )
   }
 
-  const selectedIcon = getIcon(selectedPreset?.icon)
+  const selectedIcon = getIcon(selectedPreset?.icon || null)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
