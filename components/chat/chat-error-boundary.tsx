@@ -21,7 +21,7 @@ export function ChatErrorBoundary({ children, conversationId }: ChatErrorBoundar
 
   return (
     <ErrorBoundary
-      resetKeys={[conversationId]}
+      resetKeys={conversationId ? [conversationId] : []}
       fallback={
         <div className="flex items-center justify-center h-full p-4">
           <Alert variant="destructive" className="max-w-md">

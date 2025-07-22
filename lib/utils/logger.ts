@@ -8,15 +8,32 @@ const isDevelopment = process.env.NODE_ENV === 'development'
 interface LogContext {
   userId?: string
   conversationId?: string
-  error?: Error
+  error?: unknown
   [key: string]: any
 }
 
 class Logger {
   private log(level: 'info' | 'warn' | 'error', message: string, context?: LogContext) {
+    // Process the error to ensure it's serializable
+    const processedContext = context ? { ...context } : {}
+    if (processedContext.error) {
+      // Convert unknown error to a serializable format
+      if (processedContext.error instanceof Error) {
+        processedContext.error = {
+          message: processedContext.error.message,
+          name: processedContext.error.name,
+          stack: processedContext.error.stack,
+        }
+      } else if (typeof processedContext.error === 'string') {
+        processedContext.error = { message: processedContext.error }
+      } else {
+        processedContext.error = { message: String(processedContext.error) }
+      }
+    }
+
     if (isDevelopment) {
       const logFn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log
-      logFn(`[${level.toUpperCase()}] ${message}`, context)
+      logFn(`[${level.toUpperCase()}] ${message}`, processedContext)
     } else {
       // In production, send to monitoring service
       // Example: Sentry, LogRocket, DataDog, etc.
@@ -24,7 +41,7 @@ class Logger {
       
       // TODO: Integrate with monitoring service
       // Example implementation:
-      // if (level === 'error' && context?.error) {
+      // if (level === 'error' && context?.error instanceof Error) {
       //   Sentry.captureException(context.error, {
       //     extra: context,
       //     tags: { level }

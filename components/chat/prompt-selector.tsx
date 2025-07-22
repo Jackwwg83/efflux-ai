@@ -131,7 +131,7 @@ export function PromptSelector({ onOpenSettings }: PromptSelectorProps) {
           : 'Switched to default prompt',
       })
     } catch (error) {
-      logger.error('Error selecting template', { error, templateId })
+      logger.error('Error selecting template', { error, templateId: template?.id })
       toast({
         title: 'Error',
         description: 'Failed to update prompt template',
