@@ -103,20 +103,23 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
     }
   }
 
-  // Check if user is admin
-  const isAdmin = async () => {
+  // Check if user is admin with initial loading state
+  const [isUserAdmin, setIsUserAdmin] = useState<boolean | null>(null) // null = loading
+  
+  const checkAdminStatus = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      return user?.email === 'jackwwg@gmail.com' || user?.email === 'admin@efflux.ai'
-    } catch {
-      return false
+      const adminStatus = user?.email === 'jackwwg@gmail.com' || user?.email === 'admin@efflux.ai'
+      console.log('Admin check:', { email: user?.email, isAdmin: adminStatus })
+      setIsUserAdmin(adminStatus)
+    } catch (error) {
+      console.error('Error checking admin status:', error)
+      setIsUserAdmin(false)
     }
   }
 
-  const [isUserAdmin, setIsUserAdmin] = useState(false)
-
   useEffect(() => {
-    isAdmin().then(setIsUserAdmin)
+    checkAdminStatus()
   }, [])
 
   const sendMessage = async (content: string) => {
@@ -294,20 +297,35 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
     }
   }
 
-  // Calculate quota percentage
+  // Calculate quota percentage with safety checks
   const quotaPercentage = quotaStatus 
-    ? Math.round((quotaStatus.tokens_used_today / getDailyLimit()) * 100)
+    ? (() => {
+        const dailyLimit = getDailyLimit()
+        if (dailyLimit === 0) return 0
+        const percentage = Math.round((quotaStatus.tokens_used_today / dailyLimit) * 100)
+        console.log('Quota calculation:', {
+          tokens_used_today: quotaStatus.tokens_used_today,
+          dailyLimit,
+          percentage,
+          tier: quotaStatus.tier,
+          isUserAdmin
+        })
+        return Math.min(percentage, 999) // Cap at 999% to prevent infinity issues
+      })()
     : 0
 
   function getDailyLimit() {
     // This should match the database function logic
     const tier = quotaStatus?.tier || 'free'
-    switch (tier) {
-      case 'free': return 5000
-      case 'pro': return 50000
-      case 'max': return 500000
-      default: return 5000
-    }
+    const limit = (() => {
+      switch (tier) {
+        case 'free': return 5000
+        case 'pro': return 50000
+        case 'max': return 500000
+        default: return 5000
+      }
+    })()
+    return Math.max(limit, 1) // Ensure never 0
   }
 
   return (
@@ -343,15 +361,23 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         {quotaStatus && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Daily Usage ({quotaStatus.tier}{isUserAdmin ? ' - Admin' : ''})</span>
+              <span>Daily Usage ({quotaStatus.tier}{isUserAdmin === true ? ' - Admin' : ''})</span>
               <span>{quotaStatus.tokens_used_today} / {getDailyLimit()} tokens ({quotaPercentage}%)</span>
             </div>
             <Progress value={quotaPercentage} className="h-1" />
-            {quotaPercentage >= 100 && (
+            {quotaPercentage >= 100 && isUserAdmin !== true && (
               <Alert className="mt-2 py-2" variant="destructive">
                 <AlertCircle className="h-3 w-3" />
                 <AlertDescription className="text-xs">
                   Daily quota exceeded. Please upgrade your plan or wait until tomorrow.
+                </AlertDescription>
+              </Alert>
+            )}
+            {quotaPercentage >= 100 && isUserAdmin === true && (
+              <Alert className="mt-2 py-2">
+                <AlertCircle className="h-3 w-3" />
+                <AlertDescription className="text-xs">
+                  Daily quota exceeded, but admin access enabled.
                 </AlertDescription>
               </Alert>
             )}
@@ -383,7 +409,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         onSendMessage={sendMessage}
         isLoading={isLoading}
         onStopStreaming={stopStreaming}
-        disabled={!isUserAdmin && quotaPercentage >= 100}
+        disabled={isUserAdmin === false && quotaPercentage >= 100} // Only disable for confirmed non-admin users
         onInputChange={setCurrentInput}
       />
     </div>
