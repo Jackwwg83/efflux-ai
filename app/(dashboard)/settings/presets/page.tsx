@@ -329,7 +329,11 @@ export default function PresetsManagementPage() {
   const getIcon = (iconName: string | null) => {
     if (!iconName) return Bot
     const Icon = Icons[iconName as keyof typeof Icons]
-    return Icon || Bot
+    // Type guard to ensure it's a valid component
+    if (typeof Icon === 'function') {
+      return Icon as React.ComponentType<any>
+    }
+    return Bot
   }
 
   const iconOptions = [
