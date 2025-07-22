@@ -42,17 +42,20 @@ serve(async (req) => {
     // Get preset configuration if conversationId is provided
     let finalMessages = messages
     if (conversationId) {
-      const { data: presetData } = await supabase.rpc('get_preset_for_conversation', {
+      const { data: presetData, error: presetError } = await supabase.rpc('get_preset_for_conversation', {
         p_conversation_id: conversationId,
         p_user_id: user.id
       })
       
-      if (presetData && presetData.system_prompt) {
-        // Ensure system message is at the beginning
-        finalMessages = [
-          { role: 'system', content: presetData.system_prompt },
-          ...messages.filter((m: any) => m.role !== 'system')
-        ]
+      if (!presetError && presetData && presetData.length > 0) {
+        const preset = presetData[0]
+        if (preset.system_prompt) {
+          // Ensure system message is at the beginning
+          finalMessages = [
+            { role: 'system', content: preset.system_prompt },
+            ...messages.filter((m: any) => m.role !== 'system')
+          ]
+        }
       }
     }
 

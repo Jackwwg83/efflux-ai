@@ -11,6 +11,7 @@ export interface ChatParams {
   conversationId?: string
   temperature?: number
   maxTokens?: number
+  signal?: AbortSignal
   onUpdate?: (content: string) => void
   onFinish?: (usage?: { promptTokens: number; completionTokens: number; totalTokens: number }) => void
   onError?: (error: Error) => void
@@ -43,7 +44,8 @@ export class AIGatewayClient {
           temperature: params.temperature,
           max_tokens: params.maxTokens,
           stream: true
-        })
+        }),
+        signal: params.signal
       }
     )
     

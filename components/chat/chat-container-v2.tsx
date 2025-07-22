@@ -158,6 +158,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
         model: currentConversation.model || 'gpt-3.5-turbo',
         messages: apiMessages,
         conversationId: currentConversation.id,
+        signal: abortControllerRef.current.signal,
         onUpdate: (chunk) => {
           accumulatedContent += chunk
           updateMessage(tempAssistantId, accumulatedContent)
@@ -292,12 +293,22 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
             <ModelSelector />
             <PresetSelector />
           </div>
-          <button
-            onClick={onNewChat}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            New Chat
-          </button>
+          <div className="flex items-center space-x-2">
+            {isLoading && (
+              <button
+                onClick={stopStreaming}
+                className="text-sm px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Stop Generating
+              </button>
+            )}
+            <button
+              onClick={onNewChat}
+              className="text-sm px-3 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+            >
+              New Chat
+            </button>
+          </div>
         </div>
         
         {/* Quota Status */}
