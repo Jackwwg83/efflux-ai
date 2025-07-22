@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { ConversationSidebar } from '@/components/layout/conversation-sidebar'
+import { DashboardWrapper } from '@/components/layout/dashboard-wrapper'
 import { Header } from '@/components/layout/header'
 import { Providers } from '@/components/providers'
 
@@ -18,15 +18,12 @@ export default async function DashboardLayout({
 
   return (
     <Providers>
-      <div className="flex h-screen bg-background">
-        <ConversationSidebar />
-        <div className="flex-1 flex flex-col">
-          <Header user={user} />
-          <main className="flex-1 overflow-hidden">
-            {children}
-          </main>
-        </div>
-      </div>
+      <DashboardWrapper>
+        <Header user={user} />
+        <main className="flex-1 overflow-hidden">
+          {children}
+        </main>
+      </DashboardWrapper>
     </Providers>
   )
 }

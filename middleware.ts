@@ -72,7 +72,18 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname)
       return NextResponse.redirect(loginUrl)
     }
-    // TODO: Check if user is admin
+    
+    // Check if user is admin
+    const { data: adminUser } = await supabase
+      .from('admin_users')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .single()
+    
+    if (!adminUser) {
+      // User is not an admin, redirect to chat
+      return NextResponse.redirect(new URL('/chat', request.url))
+    }
   }
 
   // Redirect authenticated users away from auth pages

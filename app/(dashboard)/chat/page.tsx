@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ChatContainer } from '@/components/chat/chat-container-v2'
+import { ChatErrorBoundary } from '@/components/chat/chat-error-boundary'
 import { useConversationStore } from '@/lib/stores/conversation'
 import { Database } from '@/types/database'
+import { logger } from '@/lib/utils/logger'
 
 type Conversation = Database['public']['Tables']['conversations']['Row']
 
@@ -36,7 +38,7 @@ export default function ChatPage() {
         await createNewConversation()
       }
     } catch (error) {
-      console.error('Error loading conversations:', error)
+      logger.error('Error loading conversations', { error })
     } finally {
       setLoading(false)
     }
@@ -65,7 +67,7 @@ export default function ChatPage() {
         setConversations((prev) => [conversation, ...prev])
       }
     } catch (error) {
-      console.error('Error creating conversation:', error)
+      logger.error('Error creating conversation', { error })
     }
   }
 
@@ -77,5 +79,9 @@ export default function ChatPage() {
     )
   }
 
-  return <ChatContainer onNewChat={createNewConversation} />
+  return (
+    <ChatErrorBoundary conversationId={useConversationStore.getState().currentConversation?.id}>
+      <ChatContainer onNewChat={createNewConversation} />
+    </ChatErrorBoundary>
+  )
 }

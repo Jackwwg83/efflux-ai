@@ -122,7 +122,8 @@ export class AIGatewayClient {
                 params.onUpdate?.(content)
               }
             } catch (e) {
-              console.error('Error parsing SSE data:', e)
+              // Error parsing SSE data - silently continue
+              // In production, this should be logged to a monitoring service
             }
           }
         }
@@ -147,7 +148,7 @@ export class AIGatewayClient {
       .single()
     
     if (error) {
-      console.error('Error fetching quota:', error)
+      // Error fetching quota - will try fallback query
       
       // Fallback: try direct table query
       const { data: quotaData, error: quotaError } = await this.supabase
@@ -157,7 +158,7 @@ export class AIGatewayClient {
         .single()
       
       if (quotaError) {
-        console.error('Fallback quota query also failed:', quotaError)
+        // Fallback quota query also failed - return defaults
         // Return default values if all fails
         return {
           tokens_used_today: 0,

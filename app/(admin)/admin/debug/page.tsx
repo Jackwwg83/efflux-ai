@@ -2,10 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { logger } from '@/lib/utils/logger'
+import type { User } from '@supabase/supabase-js'
+
+interface DebugInfo {
+  error?: string
+  [key: string]: unknown
+}
 
 export default function DebugPage() {
-  const [debugInfo, setDebugInfo] = useState<any>(null)
-  const [user, setUser] = useState<any>(null)
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -18,7 +25,7 @@ export default function DebugPage() {
       const { data, error } = await supabase.rpc('debug_current_user')
       
       if (error) {
-        console.error('Debug error:', error)
+        logger.error('Debug error', { error })
         setDebugInfo({ error: error.message })
       } else {
         setDebugInfo(data)
@@ -31,7 +38,7 @@ export default function DebugPage() {
         .eq('user_id', user?.id)
         .single()
 
-      console.log('Admin check result:', { adminCheck, adminError })
+      logger.info('Admin check result', { adminCheck, adminError })
     }
 
     checkAuth()

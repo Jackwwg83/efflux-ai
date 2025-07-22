@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Check, ChevronsUpDown, AlertCircle, AlertTriangle, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/utils/logger'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -73,7 +74,7 @@ export function ModelSelector() {
 
       setModels(modelsData || [])
     } catch (error) {
-      console.error('Error loading models:', error)
+      logger.error('Error loading models', { error })
       toast({
         title: 'Error',
         description: 'Failed to load models',
@@ -141,7 +142,7 @@ export function ModelSelector() {
 
       setOpen(false)
     } catch (error) {
-      console.error('Error updating model:', error)
+      logger.error('Error updating model', { error })
       toast({
         title: 'Error',
         description: 'Failed to update model',
