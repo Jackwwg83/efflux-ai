@@ -130,15 +130,25 @@ export function PresetSelector() {
       const { data: user } = await supabase.auth.getUser()
       if (!user.user) return
 
-      const { data, error } = await supabase
+      // Get the user's preset selection
+      const { data: selection, error: selectionError } = await supabase
         .from('user_preset_selections')
-        .select('preset_id, presets!inner(*)')
+        .select('preset_id')
         .eq('conversation_id', currentConversation.id)
         .eq('user_id', user.user.id)
         .single()
 
-      if (!error && data && data.presets) {
-        setSelectedPreset(data.presets)
+      if (!selectionError && selection?.preset_id) {
+        // Get the preset details
+        const { data: preset, error: presetError } = await supabase
+          .from('presets')
+          .select('*')
+          .eq('id', selection.preset_id)
+          .single()
+
+        if (!presetError && preset) {
+          setSelectedPreset(preset as Preset)
+        }
       }
     } catch (error) {
       // No selection yet, use default
