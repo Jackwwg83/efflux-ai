@@ -20,7 +20,7 @@ serve(async (req) => {
 
     // Get auth token from request
     const authHeader = req.headers.get('Authorization')
-    if (\!authHeader) {
+    if (!authHeader) {
       throw new Error('No authorization header')
     }
 
@@ -28,14 +28,14 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
     
-    if (authError || \!user) {
+    if (authError || !user) {
       throw new Error('Unauthorized')
     }
 
     // Parse request body
     const { model, messages, stream = true, temperature, max_tokens, conversationId } = await req.json()
 
-    if (\!model || \!messages) {
+    if (!model || !messages) {
       throw new Error('Missing required parameters: model and messages')
     }
 
@@ -51,7 +51,7 @@ serve(async (req) => {
         // Ensure system message is at the beginning
         finalMessages = [
           { role: 'system', content: presetData.system_prompt },
-          ...messages.filter((m: any) => m.role \!== 'system')
+          ...messages.filter((m: any) => m.role !== 'system')
         ]
       }
     }
@@ -64,24 +64,21 @@ serve(async (req) => {
       .eq('is_active', true)
       .single()
 
-    if (modelError || \!modelConfig) {
+    if (modelError || !modelConfig) {
       throw new Error('Model not found or not active')
     }
 
-    // Get user's API key for the provider
-    const { data: apiKeys, error: apiKeyError } = await supabase
-      .from('user_api_keys')
-      .select('id, api_key')
-      .eq('user_id', user.id)
-      .eq('provider', modelConfig.provider)
-      .eq('is_active', true)
+    // Get available API key using the RPC function
+    const { data: apiKeyData, error: apiKeyError } = await supabase.rpc('get_available_api_key', {
+      p_provider: modelConfig.provider
+    })
 
-    if (apiKeyError || \!apiKeys || apiKeys.length === 0) {
-      throw new Error(`No active API key found for provider: ${modelConfig.provider}`)
+    if (apiKeyError || !apiKeyData || apiKeyData.length === 0) {
+      console.error('API key error:', apiKeyError)
+      throw new Error(`No available API key for provider: ${modelConfig.provider}`)
     }
 
-    // Select API key (for now, just use the first one)
-    const apiKey = apiKeys[0]
+    const apiKey = apiKeyData[0]
 
     const startTime = Date.now()
 
@@ -184,7 +181,7 @@ async function forwardToProvider(params: any) {
     case 'anthropic':
       // Convert messages format for Anthropic
       const anthropicMessages = messages
-        .filter((m: any) => m.role \!== 'system')
+        .filter((m: any) => m.role !== 'system')
         .map((m: any) => ({
           role: m.role,
           content: m.content
@@ -264,7 +261,7 @@ async function handleStreamResponse(params: any) {
             const latency = Date.now() - startTime
             
             // Estimate tokens if we don't have actual usage
-            if (\!usageData) {
+            if (!usageData) {
               const estimatedTokens = Math.ceil(responseContent.length / 4)
               const promptTokens = estimateTokens(messages || [])
               totalTokens = promptTokens + estimatedTokens
@@ -359,7 +356,7 @@ async function handleStreamResponse(params: any) {
 
 // Estimate tokens for messages
 function estimateTokens(messages: any[]): number {
-  if (\!messages || messages.length === 0) return 0
+  if (!messages || messages.length === 0) return 0
   
   const text = messages.map(m => m.content || '').join(' ')
   // Simple estimation: ~4 chars per token for English, ~2 for Chinese
@@ -440,4 +437,3 @@ async function recordUsage(params: any) {
     console.error('Error recording usage:', error)
   }
 }
-EOF < /dev/null
