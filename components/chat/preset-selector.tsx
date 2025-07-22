@@ -262,7 +262,7 @@ export function PresetSelector() {
     )
   }
 
-  const selectedIcon = getIcon(selectedPreset?.icon || null)
+  const SelectedIcon = getIcon(selectedPreset?.icon || null)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -281,7 +281,7 @@ export function PresetSelector() {
                   className="p-1 rounded"
                   style={{ backgroundColor: selectedPreset.color ? `${selectedPreset.color}20` : '#6366f120' }}
                 >
-                  <selectedIcon 
+                  <SelectedIcon 
                     className="h-3 w-3" 
                     style={{ color: selectedPreset.color || '#6366f1' }}
                   />
