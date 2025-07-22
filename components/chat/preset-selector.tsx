@@ -132,13 +132,13 @@ export function PresetSelector() {
 
       const { data, error } = await supabase
         .from('user_preset_selections')
-        .select('preset_id, presets(*)')
+        .select('preset_id, presets!inner(*)')
         .eq('conversation_id', currentConversation.id)
         .eq('user_id', user.user.id)
         .single()
 
-      if (!error && data?.presets) {
-        setSelectedPreset(data.presets as Preset)
+      if (!error && data && data.presets) {
+        setSelectedPreset(data.presets)
       }
     } catch (error) {
       // No selection yet, use default
