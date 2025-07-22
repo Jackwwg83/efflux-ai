@@ -319,10 +319,10 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
     const tier = quotaStatus?.tier || 'free'
     const limit = (() => {
       switch (tier) {
-        case 'free': return 5000
-        case 'pro': return 50000
-        case 'max': return 500000
-        default: return 5000
+        case 'free': return 10000     // 10K tokens daily (from tier_definitions)
+        case 'pro': return 100000     // 100K tokens daily (from tier_definitions)
+        case 'max': return 500000     // 500K tokens daily (from tier_definitions)
+        default: return 10000
       }
     })()
     return Math.max(limit, 1) // Ensure never 0
