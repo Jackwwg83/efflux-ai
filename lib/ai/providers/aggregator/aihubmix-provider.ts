@@ -103,7 +103,17 @@ export class AiHubMixProvider extends BaseAggregatorProvider {
   }
   
   private mapModelsToSchema(models: any[]): AggregatorModel[] {
-    return models.map(model => ({
+    // Log the original data for debugging
+    console.log('AiHubMix models received:', models)
+    
+    // Remove duplicates based on model.id
+    const uniqueModels = models.filter((model, index, self) => 
+      index === self.findIndex(m => m.id === model.id)
+    )
+    
+    console.log(`Filtered ${models.length} models to ${uniqueModels.length} unique models`)
+    
+    return uniqueModels.map(model => ({
       model_id: model.id,
       model_name: model.id,
       display_name: model.name || this.formatModelName(model.id),
