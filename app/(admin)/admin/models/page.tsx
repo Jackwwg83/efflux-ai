@@ -79,6 +79,22 @@ interface ModelConfig {
   consecutive_failures?: number
 }
 
+interface AggregatorModel {
+  id: string
+  provider_id: string
+  model_id: string
+  model_name: string
+  display_name: string
+  model_type: string
+  capabilities: any
+  pricing: any
+  context_window: number
+  max_output_tokens: number
+  training_cutoff?: string
+  is_available: boolean
+  provider_name?: string
+}
+
 const PROVIDERS = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'anthropic', label: 'Anthropic' },
@@ -101,11 +117,13 @@ const HEALTH_STATUS_OPTIONS = [
 
 export default function ModelsPage() {
   const [models, setModels] = useState<ModelConfig[]>([])
+  const [aggregatorModels, setAggregatorModels] = useState<AggregatorModel[]>([])
   const [loading, setLoading] = useState(true)
   const [editingModel, setEditingModel] = useState<ModelConfig | null>(null)
   const [isAddingModel, setIsAddingModel] = useState(false)
   const [saving, setSaving] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<string>('all')
+  const [activeTab, setActiveTab] = useState<'direct' | 'aggregator'>('direct')
   const [syncing, setSyncing] = useState(false)
   
   const supabase = createClient()
@@ -118,14 +136,42 @@ export default function ModelsPage() {
   const loadModels = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
+      // Load direct provider models
+      const { data: directModels, error: directError } = await supabase
         .from('model_configs')
         .select('*')
         .order('provider', { ascending: true })
         .order('display_name', { ascending: true })
 
-      if (error) throw error
-      setModels(data || [])
+      if (directError) throw directError
+
+      // Load aggregator models with provider information
+      const { data: aggregatorData, error: aggregatorError } = await supabase
+        .from('aggregator_models')
+        .select(`
+          *,
+          api_providers!inner(
+            name,
+            display_name
+          )
+        `)
+        .eq('is_available', true)
+        .order('model_type', { ascending: true })
+        .order('display_name', { ascending: true })
+
+      if (aggregatorError) {
+        console.error('Error loading aggregator models:', aggregatorError)
+        // Don't throw error, just log it - allow direct models to load
+      }
+
+      // Transform aggregator data to include provider name
+      const transformedAggregatorModels = (aggregatorData || []).map((model: any) => ({
+        ...model,
+        provider_name: model.api_providers?.display_name || model.api_providers?.name || 'Unknown'
+      }))
+
+      setModels(directModels || [])
+      setAggregatorModels(transformedAggregatorModels)
     } catch (error) {
       console.error('Error loading models:', error)
       toast({
@@ -294,14 +340,29 @@ export default function ModelsPage() {
     ? models 
     : models.filter(m => m.provider === selectedProvider)
 
-  const providerStats = PROVIDERS.map(provider => {
-    const providerModels = models.filter(m => m.provider === provider.value)
-    return {
-      ...provider,
-      total: providerModels.length,
-      active: providerModels.filter(m => m.is_active).length
+  const filteredAggregatorModels = selectedProvider === 'all'
+    ? aggregatorModels
+    : aggregatorModels.filter(m => m.provider_name?.toLowerCase().includes(selectedProvider.toLowerCase()))
+
+  const providerStats = [
+    ...PROVIDERS.map(provider => {
+      const providerModels = models.filter(m => m.provider === provider.value)
+      return {
+        ...provider,
+        total: providerModels.length,
+        active: providerModels.filter(m => m.is_active).length,
+        type: 'direct'
+      }
+    }),
+    // Add aggregator stats
+    {
+      value: 'aggregators',
+      label: 'Aggregators',
+      total: aggregatorModels.length,
+      active: aggregatorModels.filter(m => m.is_available).length,
+      type: 'aggregator'
     }
-  })
+  ]
 
   if (loading) {
     return (
@@ -314,16 +375,22 @@ export default function ModelsPage() {
   return (
     <div className="space-y-6">
       {/* Provider Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         {providerStats.map(stat => (
           <Card key={stat.value}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
-              <Settings className="h-4 w-4 text-muted-foreground" />
+              {stat.type === 'aggregator' ? (
+                <Sparkles className="h-4 w-4 text-purple-500" />
+              ) : (
+                <Settings className="h-4 w-4 text-muted-foreground" />
+              )}
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.active}/{stat.total}</div>
-              <p className="text-xs text-muted-foreground">Active models</p>
+              <p className="text-xs text-muted-foreground">
+                {stat.type === 'aggregator' ? 'Available models' : 'Active models'}
+              </p>
             </CardContent>
           </Card>
         ))}
@@ -374,127 +441,232 @@ export default function ModelsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Provider Filter */}
+          {/* Model Type Tabs */}
           <div className="mb-4">
-            <Tabs value={selectedProvider} onValueChange={setSelectedProvider}>
-              <TabsList>
-                <TabsTrigger value="all">All Providers</TabsTrigger>
-                {PROVIDERS.map(provider => (
-                  <TabsTrigger key={provider.value} value={provider.value}>
-                    {provider.label}
-                  </TabsTrigger>
-                ))}
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'direct' | 'aggregator')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="direct">
+                  Direct Models ({models.length})
+                </TabsTrigger>
+                <TabsTrigger value="aggregator">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Aggregator Models ({aggregatorModels.length})
+                </TabsTrigger>
               </TabsList>
+              
+              <TabsContent value="direct" className="mt-4">
+                {/* Provider Filter for Direct Models */}
+                <div className="mb-4">
+                  <Tabs value={selectedProvider} onValueChange={setSelectedProvider}>
+                    <TabsList>
+                      <TabsTrigger value="all">All Providers</TabsTrigger>
+                      {PROVIDERS.map(provider => (
+                        <TabsTrigger key={provider.value} value={provider.value}>
+                          {provider.label}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </div>
+                
+                {/* Direct Models Table */}
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Model</TableHead>
+                        <TableHead>Provider</TableHead>
+                        <TableHead>Pricing</TableHead>
+                        <TableHead>Limits</TableHead>
+                        <TableHead>Tier</TableHead>
+                        <TableHead>Health</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredModels.map((model) => {
+                        const tierConfig = TIER_OPTIONS.find(t => t.value === model.tier_required)
+                        const healthConfig = HEALTH_STATUS_OPTIONS.find(h => h.value === (model.health_status || 'healthy'))
+                        
+                        return (
+                          <TableRow key={model.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{model.display_name}</p>
+                                <p className="text-sm text-muted-foreground">{model.model}</p>
+                                {model.provider_model_id && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Provider ID: {model.provider_model_id}
+                                  </p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{model.provider}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-muted-foreground">Input:</span>
+                                  ${model.input_price}/M
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-muted-foreground">Output:</span>
+                                  ${model.output_price}/M
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <p>{model.max_tokens.toLocaleString()} tokens</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {(model.context_window / 1000).toFixed(0)}K context
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={tierConfig?.color}>
+                                {tierConfig?.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {healthConfig && (
+                                  <div title={model.health_message || healthConfig.label}>
+                                    <healthConfig.icon 
+                                      className={cn("h-4 w-4", healthConfig.color)}
+                                    />
+                                  </div>
+                                )}
+                                {model.consecutive_failures !== undefined && model.consecutive_failures > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    ({model.consecutive_failures} failures)
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Switch
+                                checked={model.is_active}
+                                onCheckedChange={() => toggleModelActive(model)}
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setEditingModel(model)}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteModel(model.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="aggregator" className="mt-4">
+                {/* Aggregator Models Table */}
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Model</TableHead>
+                        <TableHead>Provider</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Context</TableHead>
+                        <TableHead>Capabilities</TableHead>
+                        <TableHead>Pricing</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredAggregatorModels.map((model) => (
+                        <TableRow key={model.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{model.display_name}</p>
+                              <p className="text-sm text-muted-foreground">{model.model_id}</p>
+                              {model.training_cutoff && (
+                                <p className="text-xs text-muted-foreground">
+                                  Training: {model.training_cutoff}
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-purple-50">
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              {model.provider_name}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {model.model_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <p>{(model.context_window / 1000).toFixed(0)}K context</p>
+                              <p className="text-xs text-muted-foreground">
+                                {model.max_output_tokens.toLocaleString()} max output
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {model.capabilities?.vision && <Badge variant="outline" className="text-xs">Vision</Badge>}
+                              {model.capabilities?.functions && <Badge variant="outline" className="text-xs">Functions</Badge>}
+                              {model.capabilities?.streaming && <Badge variant="outline" className="text-xs">Streaming</Badge>}
+                              {model.capabilities?.json_mode && <Badge variant="outline" className="text-xs">JSON</Badge>}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {model.pricing?.input !== undefined && (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-muted-foreground">In:</span>
+                                  ${model.pricing.input}/M
+                                </div>
+                              )}
+                              {model.pricing?.output !== undefined && (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-muted-foreground">Out:</span>
+                                  ${model.pricing.output}/M
+                                </div>
+                              )}
+                              {!model.pricing?.input && !model.pricing?.output && (
+                                <span className="text-muted-foreground text-xs">No pricing data</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={model.is_available ? "default" : "secondary"}>
+                              {model.is_available ? "Available" : "Unavailable"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
             </Tabs>
           </div>
 
-          {/* Models Table */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Model</TableHead>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Pricing</TableHead>
-                  <TableHead>Limits</TableHead>
-                  <TableHead>Tier</TableHead>
-                  <TableHead>Health</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredModels.map((model) => {
-                  const tierConfig = TIER_OPTIONS.find(t => t.value === model.tier_required)
-                  const healthConfig = HEALTH_STATUS_OPTIONS.find(h => h.value === (model.health_status || 'healthy'))
-                  
-                  return (
-                    <TableRow key={model.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{model.display_name}</p>
-                          <p className="text-sm text-muted-foreground">{model.model}</p>
-                          {model.provider_model_id && (
-                            <p className="text-xs text-muted-foreground">
-                              Provider ID: {model.provider_model_id}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{model.provider}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="flex items-center gap-1">
-                            <span className="text-muted-foreground">Input:</span>
-                            ${model.input_price}/M
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-muted-foreground">Output:</span>
-                            ${model.output_price}/M
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <p>{model.max_tokens.toLocaleString()} tokens</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(model.context_window / 1000).toFixed(0)}K context
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={tierConfig?.color}>
-                          {tierConfig?.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {healthConfig && (
-                            <div title={model.health_message || healthConfig.label}>
-                              <healthConfig.icon 
-                                className={cn("h-4 w-4", healthConfig.color)}
-                              />
-                            </div>
-                          )}
-                          {model.consecutive_failures !== undefined && model.consecutive_failures > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                              ({model.consecutive_failures} failures)
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={model.is_active}
-                          onCheckedChange={() => toggleModelActive(model)}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingModel(model)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteModel(model.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
         </CardContent>
       </Card>
 
