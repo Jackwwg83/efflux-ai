@@ -8,8 +8,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/types/database'
 import Link from 'next/link'
-import { MessageSquare, Key } from 'lucide-react'
-import { ProviderList } from '@/components/providers/provider-list'
+import { MessageSquare } from 'lucide-react'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -105,7 +104,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <ProviderList />
 
         <Card>
           <CardHeader>
