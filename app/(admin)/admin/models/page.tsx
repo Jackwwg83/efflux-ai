@@ -24,7 +24,8 @@ import {
   AlertCircle,
   AlertTriangle,
   Wrench,
-  CheckCircle
+  CheckCircle,
+  Sparkles
 } from 'lucide-react'
 import {
   Select,
