@@ -66,7 +66,7 @@ export class VaultClient {
     combined.set(new Uint8Array(encrypted), iv.length)
 
     // Convert to base64 for storage
-    return btoa(String.fromCharCode(...combined))
+    return btoa(String.fromCharCode.apply(null, Array.from(combined)))
   }
 
   /**
