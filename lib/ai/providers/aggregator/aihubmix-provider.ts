@@ -21,7 +21,7 @@ export class AiHubMixProvider extends BaseAggregatorProvider {
   
   async createChatCompletion(request: ChatRequest): Promise<Response> {
     // AiHubMix uses OpenAI-compatible format
-    const body = {
+    const body: any = {
       model: request.model,
       messages: request.messages,
       temperature: request.temperature,
@@ -37,9 +37,9 @@ export class AiHubMixProvider extends BaseAggregatorProvider {
     
     // Include functions if provided
     if (request.functions) {
-      body['functions'] = request.functions
+      body.functions = request.functions
       if (request.function_call) {
-        body['function_call'] = request.function_call
+        body.function_call = request.function_call
       }
     }
     
