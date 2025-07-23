@@ -59,8 +59,9 @@ serve(async (req) => {
       }
     }
 
-    // Check if model belongs to an aggregator provider (admin-managed)
-    const { data: aggregatorModelData, error: aggregatorModelError } = await supabase.rpc('get_model_provider_config_v2', {
+    // Check if model belongs to an aggregator provider
+    const { data: aggregatorModelData, error: aggregatorModelError } = await supabase.rpc('get_model_provider_config', {
+      p_user_id: user.id,
       p_model_id: model
     })
 
@@ -461,7 +462,7 @@ async function recordAggregatorUsage(params: any) {
   }
 }
 
-// Forward request to different providers
+// Forward request to different providers (existing function)
 async function forwardToProvider(params: any) {
   const { provider, apiKey, model, messages, stream, temperature, max_tokens } = params
   
@@ -540,7 +541,7 @@ async function forwardToProvider(params: any) {
   }
 }
 
-// Handle streaming responses
+// Handle streaming responses (existing function)
 async function handleStreamResponse(params: any) {
   const { response, userId, model, apiKeyId, provider, startTime, modelConfig, supabase, messages } = params
   

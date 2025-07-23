@@ -23,26 +23,28 @@ import { useToast } from '@/hooks/use-toast'
 import { Badge } from '@/components/ui/badge'
 
 interface Model {
-  model_id: string
+  id: string
+  provider: string
+  model: string
   display_name: string
-  provider_name: string
-  model_type: string
-  context_window?: number
-  is_aggregator: boolean
-  capabilities?: any
-  tier_required: string
-  // For compatibility with old code
-  id?: string
-  provider?: string
-  model?: string
-  is_active?: boolean
+  tier_required: 'free' | 'pro' | 'max'
+  is_active: boolean
   health_status?: 'healthy' | 'degraded' | 'unavailable' | 'maintenance'
   health_message?: string
+  // New fields for aggregator models
+  is_aggregator?: boolean
+  context_window?: number
+  capabilities?: {
+    vision?: boolean
+    functions?: boolean
+    streaming?: boolean
+  }
 }
 
 export function ModelSelector() {
   const [open, setOpen] = useState(false)
   const [models, setModels] = useState<Model[]>([])
+  const [aggregatorModels, setAggregatorModels] = useState<Model[]>([])
   const [userTier, setUserTier] = useState<'free' | 'pro' | 'max'>('free')
   const [loading, setLoading] = useState(true)
   
@@ -70,24 +72,42 @@ export function ModelSelector() {
         setUserTier(tierData.tier)
       }
 
-      // Get all available models (direct + aggregator)
+      // Get direct provider models
+      const { data: modelsData, error } = await supabase
+        .from('model_configs')
+        .select('*')
+        .eq('is_active', true)
+        .order('provider', { ascending: true })
+        .order('display_name', { ascending: true })
+
+      if (error) throw error
+      setModels(modelsData || [])
+
+      // Get aggregator models using the RPC function
       const { data: availableModels, error: modelsError } = await supabase
-        .rpc('get_all_available_models')
+        .rpc('get_user_available_models', { p_user_id: user.id })
 
       if (!modelsError && availableModels) {
-        // Transform to match the expected interface
-        const transformedModels = availableModels.map((m: any) => ({
-          ...m,
-          // Add compatibility fields
-          id: m.model_id,
-          provider: m.provider_name,
-          model: m.model_id,
-          is_active: true,
-          // Convert tier_required to typed union
-          tier_required: m.tier_required as 'free' | 'pro' | 'max'
-        }))
+        // Filter out aggregator models
+        const aggModels = availableModels
+          .filter((m: any) => m.is_aggregator)
+          .map((m: any) => ({
+            id: m.model_id,
+            provider: m.provider_name,
+            model: m.model_id,
+            display_name: m.display_name,
+            tier_required: 'free' as const, // Aggregator models available to all tiers
+            is_active: true,
+            is_aggregator: true,
+            context_window: m.context_window,
+            capabilities: {
+              vision: m.capabilities?.vision,
+              functions: m.capabilities?.functions,
+              streaming: m.capabilities?.streaming
+            }
+          }))
 
-        setModels(transformedModels)
+        setAggregatorModels(aggModels)
       }
     } catch (error) {
       logger.error('Error loading models', { error })
@@ -104,12 +124,12 @@ export function ModelSelector() {
   const isModelAvailable = (model: Model) => {
     if (model.is_aggregator) return true // Aggregator models always available if provider is configured
     const tierOrder = { free: 0, pro: 1, max: 2 }
-    const modelTier = model.tier_required as 'free' | 'pro' | 'max'
-    return tierOrder[userTier] >= tierOrder[modelTier]
+    return tierOrder[userTier] >= tierOrder[model.tier_required]
   }
 
   const handleModelChange = async (modelId: string) => {
-    const model = models.find(m => m.model_id === modelId)
+    const allModels = [...models, ...aggregatorModels]
+    const model = allModels.find(m => m.id === modelId)
     if (!model || !currentConversation) return
 
     if (!isModelAvailable(model)) {
@@ -145,8 +165,8 @@ export function ModelSelector() {
       const { error } = await supabase
         .from('conversations')
         .update({
-          model: model.model_id,
-          provider: model.provider_name,
+          model: model.model,
+          provider: model.provider,
         })
         .eq('id', currentConversation.id)
 
@@ -154,8 +174,8 @@ export function ModelSelector() {
 
       setCurrentConversation({
         ...currentConversation,
-        model: model.model_id,
-        provider: model.provider_name,
+        model: model.model,
+        provider: model.provider,
       })
 
       setOpen(false)
@@ -169,13 +189,14 @@ export function ModelSelector() {
     }
   }
 
-  const currentModel = models.find(
-    m => m.model_id === currentConversation?.model
+  const allModels = [...models, ...aggregatorModels]
+  const currentModel = allModels.find(
+    m => m.model === currentConversation?.model
   )
 
   // Group models by provider and type
-  const groupedModels = models.reduce((acc, model) => {
-    const key = model.is_aggregator ? `aggregator_${model.provider_name}` : model.provider_name
+  const groupedModels = allModels.reduce((acc, model) => {
+    const key = model.is_aggregator ? `aggregator_${model.provider}` : model.provider
     if (!acc[key]) {
       acc[key] = []
     }
@@ -244,15 +265,15 @@ export function ModelSelector() {
               >
                 {models.map((model) => (
                   <CommandItem
-                    key={model.model_id}
-                    value={model.model_id}
+                    key={model.id}
+                    value={model.id}
                     onSelect={handleModelChange}
                     disabled={!isModelAvailable(model)}
                   >
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        currentModel?.model_id === model.model_id ? "opacity-100" : "opacity-0"
+                        currentModel?.id === model.id ? "opacity-100" : "opacity-0"
                       )}
                     />
                     <div className="flex-1">
@@ -293,11 +314,6 @@ export function ModelSelector() {
                         {model.capabilities?.functions && (
                           <Badge variant="outline" className="text-xs">
                             🔧 Functions
-                          </Badge>
-                        )}
-                        {model.capabilities?.streaming && (
-                          <Badge variant="outline" className="text-xs">
-                            📡 Stream
                           </Badge>
                         )}
                       </div>
