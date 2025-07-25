@@ -46,6 +46,13 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface UnifiedModel {
   model_id: string
@@ -445,6 +452,26 @@ export default function UnifiedModelsPage() {
                     onChange={(e) => setEditingModel({...editingModel, output_price: parseFloat(e.target.value) || 0})}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Required Tier</Label>
+                <Select 
+                  value={editingModel.tier_required} 
+                  onValueChange={(value) => setEditingModel({...editingModel, tier_required: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select tier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Select the minimum user tier required to access this model
+                </p>
               </div>
 
               <div className="space-y-2">
