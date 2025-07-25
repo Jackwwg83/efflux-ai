@@ -65,23 +65,24 @@ WHERE
   OR 'popular' = ANY(tags)
   OR 'new' = ANY(tags);
 
--- Set proper tiers for expensive models
-UPDATE models SET tier_required = 'pro'
-WHERE is_active = true
-AND (
-  model_id LIKE 'gpt-4%'
-  OR model_id LIKE 'claude-3-opus%'
-  OR model_id LIKE 'gemini-1.5-pro%'
-  OR input_price > 10 -- Models costing more than $10 per million tokens
-);
+-- Note: Commenting out tier updates until we verify the allowed values
+-- The error suggests 'premium' might not be an allowed value in the check constraint
+-- UPDATE models SET tier_required = 'pro'
+-- WHERE is_active = true
+-- AND (
+--   model_id LIKE 'gpt-4%'
+--   OR model_id LIKE 'claude-3-opus%'
+--   OR model_id LIKE 'gemini-1.5-pro%'
+--   OR input_price > 10 -- Models costing more than $10 per million tokens
+-- );
 
-UPDATE models SET tier_required = 'premium'
-WHERE is_active = true
-AND (
-  model_id = 'gpt-4-turbo-2024-04-09'
-  OR model_id = 'claude-3-opus-20240229'
-  OR input_price > 30 -- Very expensive models
-);
+-- UPDATE models SET tier_required = 'premium'
+-- WHERE is_active = true
+-- AND (
+--   model_id = 'gpt-4-turbo-2024-04-09'
+--   OR model_id = 'claude-3-opus-20240229'
+--   OR input_price > 30 -- Very expensive models
+-- );
 
 -- Create a function to get activation statistics
 CREATE OR REPLACE FUNCTION get_model_activation_stats()
