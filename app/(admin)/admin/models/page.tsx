@@ -554,7 +554,9 @@ function ModelRow({ model, onEdit }: { model: UnifiedModel, onEdit: (model: Unif
         <div className="flex items-center gap-2">
           <span className="text-sm">{model.available_sources} sources</span>
           {model.available_sources > 1 && (
-            <Gauge className="h-4 w-4 text-blue-500" title="Multiple providers available" />
+            <span title="Multiple providers available">
+              <Gauge className="h-4 w-4 text-blue-500" />
+            </span>
           )}
         </div>
       </TableCell>
