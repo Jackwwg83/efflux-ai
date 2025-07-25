@@ -18,9 +18,17 @@ SET tier_required = CASE
   WHEN tier_required = 'professional' THEN 'pro'
   WHEN tier_required = 'business' THEN 'pro'
   WHEN tier_required = 'advanced' THEN 'premium'
+  WHEN tier_required = 'max' THEN 'premium'  -- Map 'max' to 'premium'
+  WHEN tier_required = 'ultimate' THEN 'premium'
+  WHEN tier_required = 'plus' THEN 'pro'
   ELSE 'free' -- Default any unknown values to free
 END
 WHERE tier_required IS NOT NULL;
+
+-- Log the changes
+SELECT 'Tier values cleaned up' as status, COUNT(*) as models_updated
+FROM models 
+WHERE tier_required = 'max';
 
 -- Now we can safely drop and recreate the constraint
 ALTER TABLE models DROP CONSTRAINT IF EXISTS models_tier_required_check;
