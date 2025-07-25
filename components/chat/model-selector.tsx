@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, ChevronsUpDown, AlertCircle, AlertTriangle, Wrench, Sparkles } from 'lucide-react'
+import { Check, ChevronsUpDown, AlertCircle, AlertTriangle, Wrench, Sparkles, Zap, Brain, Eye } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logger } from '@/lib/utils/logger'
 import { Button } from '@/components/ui/button'
@@ -31,13 +31,10 @@ interface Model {
   is_aggregator: boolean
   capabilities?: any
   tier_required: string
-  // For compatibility with old code
-  id?: string
-  provider?: string
-  model?: string
-  is_active?: boolean
   health_status?: 'healthy' | 'degraded' | 'unavailable' | 'maintenance'
   health_message?: string
+  is_featured?: boolean
+  tags?: string[]
 }
 
 export function ModelSelector() {
@@ -70,24 +67,12 @@ export function ModelSelector() {
         setUserTier(tierData.tier)
       }
 
-      // Get all available models (direct + aggregator)
+      // Get all available models from unified system
       const { data: availableModels, error: modelsError } = await supabase
         .rpc('get_all_available_models')
 
       if (!modelsError && availableModels) {
-        // Transform to match the expected interface
-        const transformedModels = availableModels.map((m: any) => ({
-          ...m,
-          // Add compatibility fields
-          id: m.model_id,
-          provider: m.provider_name,
-          model: m.model_id,
-          is_active: true,
-          // Convert tier_required to typed union
-          tier_required: m.tier_required as 'free' | 'pro' | 'max'
-        }))
-
-        setModels(transformedModels)
+        setModels(availableModels)
       }
     } catch (error) {
       logger.error('Error loading models', { error })
@@ -102,7 +87,6 @@ export function ModelSelector() {
   }
 
   const isModelAvailable = (model: Model) => {
-    if (model.is_aggregator) return true // Aggregator models always available if provider is configured
     const tierOrder = { free: 0, pro: 1, max: 2 }
     const modelTier = model.tier_required as 'free' | 'pro' | 'max'
     return tierOrder[userTier] >= tierOrder[modelTier]
@@ -173,25 +157,110 @@ export function ModelSelector() {
     m => m.model_id === currentConversation?.model
   )
 
-  // Group models by provider and type
-  const groupedModels = models.reduce((acc, model) => {
-    const key = model.is_aggregator ? `aggregator_${model.provider_name}` : model.provider_name
-    if (!acc[key]) {
-      acc[key] = []
-    }
-    acc[key].push(model)
-    return acc
-  }, {} as Record<string, Model[]>)
+  // Group models by tags for better organization
+  const featuredModels = models.filter(m => m.is_featured)
+  const fastModels = models.filter(m => m.tags?.includes('fast'))
+  const powerfulModels = models.filter(m => m.tags?.includes('powerful'))
+  const visionModels = models.filter(m => m.capabilities?.vision === true)
+  const otherModels = models.filter(m => 
+    !m.is_featured && 
+    !m.tags?.includes('fast') && 
+    !m.tags?.includes('powerful') &&
+    m.capabilities?.vision !== true
+  )
 
-  // Sort groups: direct providers first, then aggregators
-  const sortedGroups = Object.entries(groupedModels).sort(([a], [b]) => {
-    const aIsAggregator = a.startsWith('aggregator_')
-    const bIsAggregator = b.startsWith('aggregator_')
-    
-    if (aIsAggregator && !bIsAggregator) return 1
-    if (!aIsAggregator && bIsAggregator) return -1
-    return a.localeCompare(b)
-  })
+  const getModelIcon = (model: Model) => {
+    if (model.tags?.includes('fast')) return <Zap className="h-4 w-4 text-yellow-500" />
+    if (model.tags?.includes('powerful')) return <Brain className="h-4 w-4 text-purple-500" />
+    if (model.capabilities?.vision) return <Eye className="h-4 w-4 text-blue-500" />
+    if (model.is_aggregator) return <Sparkles className="h-4 w-4 text-violet-500" />
+    return null
+  }
+
+  const getHealthIcon = (status?: string) => {
+    switch (status) {
+      case 'degraded':
+        return <AlertTriangle className="h-3 w-3 text-yellow-500" />
+      case 'unavailable':
+        return <AlertCircle className="h-3 w-3 text-red-500" />
+      case 'maintenance':
+        return <Wrench className="h-3 w-3 text-blue-500" />
+      default:
+        return null
+    }
+  }
+
+  const ModelGroup = ({ title, models, icon }: { title: string, models: Model[], icon?: React.ReactNode }) => {
+    if (models.length === 0) return null
+
+    return (
+      <CommandGroup 
+        heading={
+          <div className="flex items-center gap-2">
+            {icon}
+            <span>{title}</span>
+          </div>
+        }
+      >
+        {models.map((model) => (
+          <CommandItem
+            key={model.model_id}
+            value={model.model_id}
+            onSelect={handleModelChange}
+            disabled={!isModelAvailable(model)}
+          >
+            <Check
+              className={cn(
+                "mr-2 h-4 w-4",
+                currentModel?.model_id === model.model_id ? "opacity-100" : "opacity-0"
+              )}
+            />
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {getModelIcon(model)}
+                  <span>{model.display_name}</span>
+                  {getHealthIcon(model.health_status)}
+                </div>
+                {!isModelAvailable(model) && (
+                  <Badge variant="outline" className="text-xs">
+                    {model.tier_required}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                {model.context_window && (
+                  <span className="text-xs text-muted-foreground">
+                    {(model.context_window / 1000).toFixed(0)}K context
+                  </span>
+                )}
+                {model.tags?.includes('new') && (
+                  <Badge variant="secondary" className="text-xs">
+                    New
+                  </Badge>
+                )}
+                {model.tags?.includes('recommended') && (
+                  <Badge variant="default" className="text-xs">
+                    Recommended
+                  </Badge>
+                )}
+                {model.is_aggregator && (
+                  <Badge variant="outline" className="text-xs">
+                    via {model.provider_name}
+                  </Badge>
+                )}
+              </div>
+              {model.health_message && model.health_status !== 'healthy' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {model.health_message}
+                </p>
+              )}
+            </div>
+          </CommandItem>
+        ))}
+      </CommandGroup>
+    )
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -206,9 +275,7 @@ export function ModelSelector() {
           <div className="flex items-center gap-2 truncate">
             {currentModel ? (
               <>
-                {currentModel.is_aggregator && (
-                  <Sparkles className="h-4 w-4 text-violet-500" />
-                )}
+                {getModelIcon(currentModel)}
                 <span className="truncate">{currentModel.display_name}</span>
               </>
             ) : (
@@ -218,100 +285,39 @@ export function ModelSelector() {
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0">
+      <PopoverContent className="w-[450px] p-0">
         <Command>
           <CommandInput placeholder="Search models..." />
           <CommandEmpty>No model found.</CommandEmpty>
-          {sortedGroups.map(([key, models]) => {
-            const isAggregator = key.startsWith('aggregator_')
-            const displayName = isAggregator 
-              ? key.replace('aggregator_', '')
-              : key.toUpperCase()
-            
-            return (
-              <CommandGroup 
-                key={key} 
-                heading={
-                  <div className="flex items-center gap-2">
-                    {isAggregator && (
-                      <Badge variant="secondary" className="text-xs">
-                        Aggregator
-                      </Badge>
-                    )}
-                    <span>{displayName}</span>
-                  </div>
-                }
-              >
-                {models.map((model) => (
-                  <CommandItem
-                    key={model.model_id}
-                    value={model.model_id}
-                    onSelect={handleModelChange}
-                    disabled={!isModelAvailable(model)}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        currentModel?.model_id === model.model_id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span>{model.display_name}</span>
-                          {model.health_status && model.health_status !== 'healthy' && (
-                            <span title={model.health_message}>
-                              {model.health_status === 'degraded' && (
-                                <AlertTriangle className="h-3 w-3 text-yellow-500" />
-                              )}
-                              {model.health_status === 'unavailable' && (
-                                <AlertCircle className="h-3 w-3 text-red-500" />
-                              )}
-                              {model.health_status === 'maintenance' && (
-                                <Wrench className="h-3 w-3 text-blue-500" />
-                              )}
-                            </span>
-                          )}
-                        </div>
-                        {!isModelAvailable(model) && (
-                          <span className="text-xs text-muted-foreground">
-                            {model.tier_required}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        {model.context_window && (
-                          <span className="text-xs text-muted-foreground">
-                            {model.context_window.toLocaleString()} tokens
-                          </span>
-                        )}
-                        {model.capabilities?.vision && (
-                          <Badge variant="outline" className="text-xs">
-                            👁️ Vision
-                          </Badge>
-                        )}
-                        {model.capabilities?.functions && (
-                          <Badge variant="outline" className="text-xs">
-                            🔧 Functions
-                          </Badge>
-                        )}
-                        {model.capabilities?.streaming && (
-                          <Badge variant="outline" className="text-xs">
-                            📡 Stream
-                          </Badge>
-                        )}
-                      </div>
-                      {model.health_message && model.health_status !== 'healthy' && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {model.health_message}
-                        </p>
-                      )}
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )
-          })}
+          
+          <ModelGroup 
+            title="Featured Models" 
+            models={featuredModels}
+            icon={<Sparkles className="h-4 w-4 text-violet-500" />}
+          />
+          
+          <ModelGroup 
+            title="Fast Models" 
+            models={fastModels}
+            icon={<Zap className="h-4 w-4 text-yellow-500" />}
+          />
+          
+          <ModelGroup 
+            title="Powerful Models" 
+            models={powerfulModels}
+            icon={<Brain className="h-4 w-4 text-purple-500" />}
+          />
+          
+          <ModelGroup 
+            title="Vision Models" 
+            models={visionModels}
+            icon={<Eye className="h-4 w-4 text-blue-500" />}
+          />
+          
+          <ModelGroup 
+            title="Other Models" 
+            models={otherModels}
+          />
         </Command>
       </PopoverContent>
     </Popover>
