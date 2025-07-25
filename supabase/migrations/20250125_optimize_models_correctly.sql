@@ -135,7 +135,7 @@ FROM models;
 SELECT 
   tier_required,
   COUNT(*) as model_count,
-  ARRAY_AGG(model_id ORDER BY model_id) FILTER (WHERE ROW_NUMBER() OVER (PARTITION BY tier_required ORDER BY model_id) <= 5) as example_models
+  (ARRAY_AGG(model_id ORDER BY model_id))[1:5] as example_models
 FROM models
 WHERE is_active = true
 GROUP BY tier_required
