@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         if (error) throw error
         syncedModels++
       } catch (error) {
-        errors.push(`Failed to sync ${provider}: ${error.message}`)
+        errors.push(`Failed to sync ${provider}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
     
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         if (error) throw error
         syncedModels++
       } catch (error) {
-        errors.push(`Failed to sync ${aggregator.name}: ${error.message}`)
+        errors.push(`Failed to sync ${aggregator.name}: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
     
