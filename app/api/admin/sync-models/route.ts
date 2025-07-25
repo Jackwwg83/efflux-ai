@@ -12,13 +12,14 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if user is admin
-    const { data: adminUser } = await supabase
+    const { data: adminUser, error: adminError } = await supabase
       .from('admin_users')
-      .select('id')
+      .select('user_id')
       .eq('user_id', user.id)
       .single()
     
-    if (!adminUser) {
+    if (adminError || !adminUser) {
+      console.error('Admin check failed:', adminError)
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
     
