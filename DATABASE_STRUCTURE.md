@@ -192,9 +192,60 @@ Returns models available to users.
 
 3. **RLS Policies**: All tables have Row Level Security enabled. Admin users need proper entries in `admin_users` table.
 
-## Current Statistics (as of 2025-07-25)
-- Total models: 387
-- Total model sources: 403
-- All models have at least one source
-- Active models: 387
+## Model Tier System (Updated 2025-07-26)
+
+### Tier Values
+The `tier_required` field in the `models` table supports the following values:
+- `'free'` - Basic models available to all users
+- `'pro'` - Mid-tier models for professional users  
+- `'max'` - Premium models with highest capabilities
+- `NULL` - Defaults to 'free' behavior
+
+**Check Constraint**: `models_tier_required_check` enforces these values.
+
+### Current Model Distribution (as of 2025-07-26)
+
+After optimization to keep only latest models:
+
+**Total Active Models**: 26 (reduced from 387)
+
+**By Provider**:
+- **OpenAI** (9 models):
+  - Max tier: o3, o3-pro
+  - Pro tier: gpt-4o, o3-mini, o4-mini, gpt-4.1
+  - Free tier: gpt-4o-mini, gpt-4.1-mini, gpt-4.1-nano
+
+- **Anthropic** (9 models):
+  - Max tier: Claude 4 Opus variants (3)
+  - Pro tier: Claude 4 Sonnet variants (3)
+  - Free tier: Claude 3.5 Haiku variants (3)
+
+- **Google** (5 models):
+  - Max tier: Gemini 2.5 Pro
+  - Pro tier: Gemini 2.5 Flash
+  - Free tier: Gemini 2.0 Flash, Flash-Lite variants
+
+- **Other** (3 models):
+  - Free tier: DALL-E 3, Text Embedding 3 (Small & Large)
+
+**Featured Models**: gpt-4o, o4-mini, claude-opus-4-0, gemini-2.5-pro, gemini-2.5-flash
+
+### Model Naming Patterns
+- OpenAI O-series: `o3`, `o3-pro`, `o3-mini`, `o4-mini`
+- OpenAI GPT: `gpt-4o`, `gpt-4o-mini`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`
+- Claude 4: `claude-opus-4-0`, `claude-sonnet-4-0`, with dated variants
+- Claude 3.5: Only Haiku retained (`claude-3.5-haiku`, `claude-3-5-haiku`)
+- Gemini 2.x: `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash-lite`
+
+### Model Selection Strategy
+1. All GPT-3.5 and earlier models removed
+2. Claude 3.x models removed except 3.5 Haiku (cheapest) and 3.7 Sonnet (if exists)
+3. All Gemini 1.x models removed
+4. Only stable versions kept (no preview/experimental/search variants)
+5. Price-based tier assignment based on 2025 market rates
+
+## Current Statistics (as of 2025-07-26)
+- Total models in database: 387
+- Active models: 26
+- Model sources: 403
 - Current admin user: 76443a23-7734-4500-9cd2-89d685eba7d3
