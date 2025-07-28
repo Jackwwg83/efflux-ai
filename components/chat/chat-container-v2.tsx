@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { MessageList } from './message-list'
 import { MessageInput } from './message-input'
 import { logger } from '@/lib/utils/logger'
-import { ModelSelector } from './model-selector'
+import { ModelSelectorTabs } from './model-selector-tabs'
 import { ContextIndicator } from './context-indicator'
 import { PresetSelector } from './preset-selector'
 import { createClient } from '@/lib/supabase/client'
@@ -336,7 +336,7 @@ export function ChatContainer({ onNewChat }: ChatContainerProps) {
             <h2 className="text-lg font-semibold">
               {currentConversation?.title || 'New Chat'}
             </h2>
-            <ModelSelector />
+            <ModelSelectorTabs />
             <PresetSelector />
           </div>
           <div className="flex items-center space-x-2">
