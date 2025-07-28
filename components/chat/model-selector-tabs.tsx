@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { createClient } from '@/lib/supabase/client'
 import { useConversationStore } from '@/lib/stores/conversation'
 import { useToast } from '@/hooks/use-toast'
@@ -369,7 +368,7 @@ export function ModelSelectorTabs() {
               <TabsTrigger value="all">All Models</TabsTrigger>
             </TabsList>
             
-            <ScrollArea className="h-[450px] mt-4">
+            <div className="h-[450px] mt-4 overflow-y-auto">
               <TabsContent value="quick" className="mt-0">
                 <div className="grid grid-cols-2 gap-4">
                   {quickAccessModels.map(model => (
@@ -404,7 +403,7 @@ export function ModelSelectorTabs() {
               <TabsContent value="all" className="mt-0">
                 <ModelList models={filteredModels} />
               </TabsContent>
-            </ScrollArea>
+            </div>
           </Tabs>
         </DialogContent>
       </Dialog>
