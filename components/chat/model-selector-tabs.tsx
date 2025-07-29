@@ -37,10 +37,10 @@ interface Model {
 
 // Quick access models - most commonly used
 const QUICK_ACCESS_MODELS = [
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', desc: 'Fast & affordable' },
-  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', desc: 'Best for complex tasks' },
-  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', desc: 'Google\'s fastest' },
-  { id: 'deepseek-r1', name: 'DeepSeek R1', desc: 'Reasoning specialist' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', desc: 'Fast & affordable • Free tier' },
+  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', desc: 'Best for complex tasks • Pro tier' },
+  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', desc: 'Google\'s fastest • Free tier' },
+  { id: 'deepseek-r1', name: 'DeepSeek R1', desc: 'Reasoning specialist • Free tier' },
 ]
 
 export function ModelSelectorTabs() {
@@ -243,11 +243,9 @@ export function ModelSelectorTabs() {
       </p>
       
       <div className="flex items-center gap-2">
-        {!isModelAvailable(model) && (
-          <Badge variant="outline" className="text-xs">
-            {model.tier_required}
-          </Badge>
-        )}
+        <Badge variant={isModelAvailable(model) ? "secondary" : "outline"} className="text-xs">
+          {model.tier_required.charAt(0).toUpperCase() + model.tier_required.slice(1)}
+        </Badge>
         {currentModel?.model_id === model.model_id && (
           <Badge variant="default" className="text-xs">
             Current
@@ -286,16 +284,18 @@ export function ModelSelectorTabs() {
               <div className="font-medium">{model.display_name}</div>
               <div className="text-xs text-muted-foreground">
                 {model.context_window && `${(model.context_window / 1000).toFixed(0)}K`}
-                {model.input_price && ` • $${model.input_price}/1K`}
+                {model.tier_required && ` • ${model.tier_required === 'free' ? 'Free' : model.tier_required === 'pro' ? 'Pro' : 'Max'} tier`}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {!isModelAvailable(model) && (
-              <Badge variant="outline" className="text-xs">
-                {model.tier_required}
-              </Badge>
-            )}
+            <Badge 
+              variant={isModelAvailable(model) ? "secondary" : "outline"} 
+              className="text-xs"
+              title={`Requires ${model.tier_required} tier`}
+            >
+              {model.tier_required === 'free' ? 'Free' : model.tier_required === 'pro' ? 'Pro' : 'Max'}
+            </Badge>
             <Button
               variant="ghost"
               size="icon"
